@@ -103,7 +103,7 @@ impl Crane {
 
 #[cfg(test)]
 mod test {
-    use std::vec;
+    use std::{io::{Read, Seek, SeekFrom}, vec};
 
     use super::*;
 
@@ -129,6 +129,22 @@ mod test {
         let crane = Crane::new(schema, path);
 
         crane.write_memory();
+    }
+
+    #[test]
+    fn test_double_file() {
+        let path = PathBuf::from("./.gitignore");
+        let mut f1 = File::open(&path).unwrap();
+        let mut f2 = File::open(&path).unwrap();
+
+        let mut s1 = String::new();
+        let mut s2 = String::new();
+
+        f1.read_to_string(&mut s1).unwrap();
+        // f2.seek(SeekFrom::Start(0));
+        f2.read_to_string(&mut s2).unwrap();
+
+        assert_eq!(s1, s2)
     }
 }
 
