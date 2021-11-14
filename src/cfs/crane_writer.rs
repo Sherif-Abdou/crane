@@ -5,7 +5,7 @@ use super::writer::{WriteError, Writer};
 
 const SECTOR_LENGTH: u64 = 512;
 
-struct CraneWriter {
+pub struct CraneWriter {
     sector_length: u64,
     start_byte: u64,
     end_byte: u64,

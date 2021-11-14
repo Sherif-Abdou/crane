@@ -136,6 +136,7 @@ mod test {
         let path = PathBuf::from("./.gitignore");
         let mut f1 = File::open(&path).unwrap();
         let mut f2 = File::open(&path).unwrap();
+        let mut f3 = OpenOptions::new().write(true).open(path).unwrap();
 
         let mut s1 = String::new();
         let mut s2 = String::new();
