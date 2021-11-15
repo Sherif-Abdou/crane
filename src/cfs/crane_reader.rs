@@ -2,7 +2,7 @@ use std::{cell::RefCell, fs::File, io::{Read, Seek, SeekFrom}, rc::Weak, slice};
 
 use super::reader::{ReadError, Reader};
 
-const SECTOR_LENGTH: u64 = 512;
+const SECTOR_LENGTH: u64 = 256;
 
 pub struct CraneReader {
     sector_length: u64,

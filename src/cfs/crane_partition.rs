@@ -33,11 +33,11 @@ impl Writer for CranePartition {
         self.writer.sector_length()
     }
 
-    fn write_sectors(&mut self, start: u64, end: u64, bytes: &[u8]) -> Result<(), super::writer::WriteError> {
+    fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), super::writer::WriteError> {
         let s = start + self.offset;
-        let e = end + self.offset;
+        let e = start + offset + (bytes.len() as u64);
         self.initialized_len = max(e, self.initialized_len);
-        self.writer.write_sectors(s,e, bytes)
+        self.writer.write_sectors(s,offset, bytes)
     }
 
     fn capacity(&self) -> u64 {
