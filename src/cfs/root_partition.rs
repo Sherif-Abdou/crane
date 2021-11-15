@@ -16,12 +16,15 @@ impl RootPartition {
 
     pub fn read(&mut self) {
         let mut new_vec: Vec<u64> = vec![];
-        let bytes = Buffer::new(self.partition.read_sectors(0, 4).unwrap());
+        let mut bytes = Buffer::new(self.partition.read_sectors(0, 4).unwrap());
 
         while !bytes.empty() {
-            let rnumber = bytes.consume(8);
+            let b = bytes.consume(8);
+            let rnumber = b.as_slice();
 
-            // new_vec.push(rnumber.try_into().unwrap());
+            let value = u64::from_be_bytes(rnumber.try_into().unwrap());
+
+            new_vec.push(value);
         }
     }
 

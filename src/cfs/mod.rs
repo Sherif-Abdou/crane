@@ -6,5 +6,10 @@ mod crane_reader;
 mod root_partition;
 mod buffer;
 
+#[derive(Debug)]
+pub struct FSError {
+
+}
+
 use writer::*;
 use crane_writer::*;

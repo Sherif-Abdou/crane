@@ -135,17 +135,14 @@ mod test {
     fn test_double_file() {
         let path = PathBuf::from("./.gitignore");
         let mut f1 = File::open(&path).unwrap();
-        let mut f2 = File::open(&path).unwrap();
-        let mut f3 = OpenOptions::new().write(true).open(path).unwrap();
 
-        let mut s1 = String::new();
-        let mut s2 = String::new();
+        f1.seek(SeekFrom::Start(0)).unwrap();
+        let v  = (&f1).bytes().next().unwrap().unwrap().clone();
 
-        f1.read_to_string(&mut s1).unwrap();
-        // f2.seek(SeekFrom::Start(0));
-        f2.read_to_string(&mut s2).unwrap();
+        f1.seek(SeekFrom::Start(1)).unwrap();
+        let h  = (&f1).bytes().next().unwrap().unwrap().clone();
 
-        assert_eq!(s1, s2)
+        assert_eq!(v, h);
     }
 }
 

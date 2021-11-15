@@ -1,6 +1,6 @@
 use std::{cell::RefCell, cmp::max, fs::File, rc::Weak};
 
-use super::{crane_reader::CraneReader, crane_writer::CraneWriter, reader::Reader, writer::Writer};
+use super::{FSError, crane_reader::CraneReader, crane_writer::CraneWriter, reader::Reader, writer::Writer};
 
 pub struct CranePartition {
     id: u64,
@@ -33,7 +33,7 @@ impl Writer for CranePartition {
         self.writer.sector_length()
     }
 
-    fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), super::writer::WriteError> {
+    fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), FSError> {
         let s = start + self.offset;
         let e = start + offset + (bytes.len() as u64);
         self.initialized_len = max(e, self.initialized_len);
@@ -50,7 +50,7 @@ impl Reader for CranePartition {
         self.reader.sector_length()
     }
 
-    fn read_sectors(&mut self, start: u64, end: u64) -> Result<Vec<u8>, super::reader::ReadError> {
+    fn read_sectors(&mut self, start: u64, end: u64) -> Result<Vec<u8>, FSError> {
         let s = start + self.offset;
         let e = end + self.offset;
 

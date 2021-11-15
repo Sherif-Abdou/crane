@@ -1,7 +1,8 @@
 use std::io::{Seek, SeekFrom, Write};
 use std::{cell::RefCell, fs::File, rc::Weak};
 
-use super::writer::{WriteError, Writer};
+use super::FSError;
+use super::writer::{Writer};
 
 const SECTOR_LENGTH: u64 = 256;
 
@@ -28,7 +29,7 @@ impl Writer for CraneWriter {
         self.sector_length
     }
 
-    fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), super::writer::WriteError> {
+    fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), FSError> {
         let start_byte = start*self.sector_length;
 
         if let Some(filerc) = self.file.upgrade() {
@@ -39,10 +40,39 @@ impl Writer for CraneWriter {
             f.write(bytes).unwrap();
             return Ok(());
         }
-        Err(WriteError {})
+        Err(FSError {})
     }
 
     fn capacity(&self) -> u64 {
         (self.end_byte-self.start_byte)/self.sector_length
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use std::{fs::OpenOptions, path::PathBuf, rc::Rc};
+    use super::Writer;
+
+    use super::*;
+
+    pub fn get_db_file() -> File {
+        let path = PathBuf::from("./test/write.db");
+
+        match &path.exists() {
+            true => OpenOptions::new().write(true).open(path).unwrap(),
+            false => File::create(path).unwrap(),
+        }
+    }
+
+    #[test]
+    pub fn test_writer() {
+        let file = Rc::new(RefCell::new(get_db_file()));
+
+        let mut writer = CraneWriter::new(0, 16, Rc::downgrade(&file));
+
+        let bytes = (24u64).to_be_bytes();
+
+        writer.write_sectors(0, 0, &bytes).unwrap();
     }
 }

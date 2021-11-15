@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fs::File, io::{Read, Seek, SeekFrom}, rc::Weak, slice};
 
-use super::reader::{ReadError, Reader};
+use super::{FSError, reader::{Reader}};
 
 const SECTOR_LENGTH: u64 = 256;
 
@@ -27,28 +27,58 @@ impl Reader for CraneReader {
         self.sector_length
     }
 
-    fn read_sectors(&mut self, start: u64, end: u64) -> Result<Vec<u8>, super::reader::ReadError> {
+    fn read_sectors(&mut self, start: u64, end: u64) -> Result<Vec<u8>, FSError> {
         let start_byte = start*self.sector_length;
         let end_byte = end*self.sector_length;
 
         let len = end_byte - start_byte;
 
         if let Some(raw_file) = self.file.upgrade() {
-            let mut f = raw_file.borrow_mut();
-
-            let mut buffer = vec![0u8; len as usize];
-
+            let mut f = (&raw_file).borrow_mut(); 
+                
             f.seek(SeekFrom::Start(start_byte)).unwrap();
 
-            f.read_exact(buffer.as_mut_slice()).unwrap();
+            let buffer = (&*f).bytes().take(len as usize).map(|v| v.unwrap()).collect();
 
             return Ok(buffer);
         }
 
-        Err(ReadError {})
+        Err(FSError {})
     }
 
     fn capacity(&self) -> u64 {
         (self.end_byte-self.start_byte)/self.sector_length
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::convert::TryInto;
+    use std::{fs::OpenOptions, path::PathBuf, rc::Rc};
+    use super::Reader;
+
+    use super::*;
+
+    pub fn get_db_file() -> File {
+        let path = PathBuf::from("./test/write.db");
+
+        match &path.exists() {
+            true => OpenOptions::new().read(true).open(path).unwrap(),
+            false => File::create(path).unwrap(),
+        }
+    }
+
+    #[test]
+    pub fn test_writer() {
+        let file = Rc::new(RefCell::new(get_db_file()));
+
+        let mut reader = CraneReader::new(0, 16, Rc::downgrade(&file));
+
+        let data = reader.read_sectors(0, 1).unwrap();
+
+
+        let number = u64::from_be_bytes(data[..].try_into().unwrap());
+
+        assert_eq!(number, 24);
     }
 }
