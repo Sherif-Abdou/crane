@@ -46,6 +46,7 @@ impl Reader for CraneReader {
         Err(FSError {})
     }
 
+
     fn capacity(&self) -> u64 {
         (self.end_byte-self.start_byte)/self.sector_length
     }
@@ -60,7 +61,7 @@ mod test {
     use super::*;
 
     pub fn get_db_file() -> File {
-        let path = PathBuf::from("./test/write.db");
+        let path = PathBuf::from("./test/read.db");
 
         match &path.exists() {
             true => OpenOptions::new().read(true).open(path).unwrap(),
@@ -79,6 +80,6 @@ mod test {
 
         let number = u64::from_be_bytes(data[..].try_into().unwrap());
 
-        assert_eq!(number, 24);
+        assert_eq!(number, 2048);
     }
 }

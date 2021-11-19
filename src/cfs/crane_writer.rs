@@ -37,7 +37,7 @@ impl Writer for CraneWriter {
 
             f.seek(SeekFrom::Start(start_byte + offset)).unwrap();
 
-            f.write(bytes).unwrap();
+            f.write_all(bytes).expect("Failure writing bytes to db");
             return Ok(());
         }
         Err(FSError {})
@@ -71,7 +71,7 @@ mod test {
 
         let mut writer = CraneWriter::new(0, 16, Rc::downgrade(&file));
 
-        let bytes = (24u64).to_be_bytes();
+        let bytes = (2048u64).to_be_bytes();
 
         writer.write_sectors(0, 0, &bytes).unwrap();
     }
