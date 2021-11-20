@@ -1,12 +1,13 @@
 use std::convert::TryInto;
 use lazy_static::lazy_static;
 
-use crate::{Crane, cfs::{buffer::Buffer, reader::Reader, schema::DataValue}};
+use crate::{cfs::{buffer::Buffer, reader::Reader, schema::DataValue}};
 
 use super::{crane_partition::CranePartition, schema::CraneSchema, writer::Writer};
 
 lazy_static! {
     static ref PARTITION_SCHEMA: CraneSchema = CraneSchema::new(vec![
+        DataValue::UInt64(0),
         DataValue::UInt64(0),
         DataValue::UInt64(0),
     ]);
@@ -17,6 +18,7 @@ pub struct RootPartition {
     partition: CranePartition,
     pub partition_starts: Vec<u64>,
     pub partition_ends: Vec<u64>,
+    pub init_lens: Vec<u64>,
 }
 
 impl RootPartition {
@@ -25,6 +27,7 @@ impl RootPartition {
             partition,
             partition_starts: vec![],
             partition_ends: vec![],
+            init_lens: vec![],
         };
 
         root.read();
@@ -37,47 +40,47 @@ impl RootPartition {
             partition,
             partition_starts: vec![],
             partition_ends: vec![],
+            init_lens: vec![],
         }
+    }
+
+    pub fn compute_lens(&self) -> Vec<u64> {
+        self.partition_starts.iter().zip(self.partition_ends.iter()).map(|(s, e)| *e-*s).collect()
     }
 
     pub fn read(&mut self) {
         let mut new_starts: Vec<u64> = vec![];
         let mut new_ends: Vec<u64> = vec![];
+        let mut init_lens: Vec<u64> = vec![];
         let mut bytes = Buffer::new(self.partition.read_sectors(0, 4).unwrap());
 
-        let mut i: u64  = 0;
-
         while !bytes.empty() {
-            let mut b = bytes.consume(8);
-            b.reverse();
-            let rnumber = b.as_slice();
+            let values = PARTITION_SCHEMA.parse_bytes(&mut bytes);
+            if let (DataValue::UInt64(start), DataValue::UInt64(end), DataValue::UInt64(init_len)) = (&values[0], &values[1], &values[2]) {
+                dbg!(*end);
+                new_starts.insert(0, *start);
+                new_ends.insert(0, *end);
+                init_lens.insert(0, *init_len);
+            }
+       }
 
-            let bytes = rnumber.try_into().unwrap();
-
-            let value = u64::from_be_bytes(bytes);
-
-            match i%2 {
-                0 => new_ends.push(value),
-                1 => new_starts.push(value),
-                _ => panic!()
-            };
-            
-            i += 1;
-        }
-
-        new_starts.reverse();
         self.partition_starts = new_starts;
+        self.partition_ends = new_ends;
+        self.init_lens = init_lens;
     }
 
     pub fn write(&mut self) {
-        for i in 0..(self.partition_starts.len()*2) {
-            let bytes = match i%2 {
-                0 => self.partition_starts[i/2].to_be_bytes(),
-                1 => self.partition_ends[i/2].to_be_bytes(),
-                _ => panic!("mod 2 produced number besides 1 or 0")
-            };
+        assert_eq!(self.partition_starts.len(), self.partition_ends.len());
+        assert_eq!(self.partition_starts.len(), self.init_lens.len());
+        let len = PARTITION_SCHEMA.len();
 
-            self.partition.write_sectors(0, 8*(i as u64), &bytes).unwrap();
+        for i in 0..(self.partition_starts.len()) {
+            let bytes = PARTITION_SCHEMA.produce_bytes(&vec![
+                DataValue::UInt64(self.partition_starts[i]),
+                DataValue::UInt64(self.partition_ends[i]),
+                DataValue::UInt64(self.init_lens[i]),
+            ]);
+            self.partition.write_sectors(0, len*(i as u64), &bytes).unwrap();
         }
     }
 }
@@ -98,6 +101,7 @@ mod tests {
 
         root_partition.partition_starts.append(&mut vec![20, 120, 282]);
         root_partition.partition_ends.append(&mut vec![119, 281, 300]);
+        root_partition.init_lens.append(&mut vec![40, 100, 18]);
 
         root_partition.write();
     }
@@ -112,5 +116,7 @@ mod tests {
 
         assert_eq!(root_partition.partition_starts.len(), 3);
         assert_eq!(root_partition.partition_starts, vec![20, 120, 282]);
+        assert_eq!(root_partition.partition_ends, vec![119, 281, 300]);
+        assert_eq!(root_partition.init_lens, vec![40, 100, 18]);
     }
 }
