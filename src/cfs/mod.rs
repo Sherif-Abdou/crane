@@ -13,5 +13,8 @@ pub struct FSError {
 
 }
 
-use writer::*;
+use writer::Writer;
 use crane_writer::*;
+use reader::Reader;
+use crane_disk::CraneDisk;
+use schema::*;

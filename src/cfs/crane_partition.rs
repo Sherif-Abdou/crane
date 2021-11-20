@@ -12,11 +12,11 @@ pub struct CranePartition {
 }
 
 impl CranePartition {
-    pub fn new(id: u64, offset: u64, total_len: u64, initialized_len: u64, file: Weak<RefCell<File>>) -> Self {
+    pub fn new(id: u64, offset: u64, total_len: u64, initialized_len: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) -> Self {
         let s = offset;
         let e = total_len + offset;
-        let reader = CraneReader::new(s, e, file.clone());
-        let writer = CraneWriter::new(s, e, file.clone());
+        let reader = CraneReader::new(s, e, rfile.clone());
+        let writer = CraneWriter::new(s, e, wfile.clone());
         CranePartition {
             id,
             offset,
@@ -25,6 +25,18 @@ impl CranePartition {
             reader: Box::new(reader),
             writer: Box::new(writer),
         }
+    }
+
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    pub fn total_len(&self) -> u64 {
+        self.total_len
+    }
+
+    pub fn id(&self) -> u64 {
+        self.id
     }
 }
 
@@ -36,7 +48,7 @@ impl Writer for CranePartition {
     fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), FSError> {
         let s = start + self.offset;
         let e = s + offset + (bytes.len() as u64);
-        self.initialized_len = max(e, self.initialized_len);
+        self.initialized_len = max(e-s, self.initialized_len);
         self.writer.write_sectors(s,offset, bytes)
     }
 

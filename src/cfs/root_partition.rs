@@ -52,15 +52,18 @@ impl RootPartition {
         let mut new_starts: Vec<u64> = vec![];
         let mut new_ends: Vec<u64> = vec![];
         let mut init_lens: Vec<u64> = vec![];
-        let mut bytes = Buffer::new(self.partition.read_sectors(0, 4).unwrap());
+        let mut bytes = Buffer::new(self.partition.read_sectors(0, 12).unwrap());
 
         while !bytes.empty() {
             let values = PARTITION_SCHEMA.parse_bytes(&mut bytes);
+            
             if let (DataValue::UInt64(start), DataValue::UInt64(end), DataValue::UInt64(init_len)) = (&values[0], &values[1], &values[2]) {
-                dbg!(*end);
-                new_starts.insert(0, *start);
-                new_ends.insert(0, *end);
-                init_lens.insert(0, *init_len);
+                if *start == 0 && *end == 0 {
+                    break;
+                }
+                new_starts.push(*start);
+                new_ends.push(*end);
+                init_lens.push(*init_len);
             }
        }
 
@@ -95,7 +98,7 @@ mod tests {
     fn test_partition_write() {
         let file = Rc::new(RefCell::new(File::create("./test/partitions/write.db").unwrap()));
 
-        let partition = CranePartition::new(1, 0, 24, 0, Rc::downgrade(&file));
+        let partition = CranePartition::new(1, 0, 24, 0, Rc::downgrade(&file), Rc::downgrade(&file));
 
         let mut root_partition = RootPartition::new(partition);
 
@@ -110,7 +113,7 @@ mod tests {
     fn test_partition_read() {
         let file = Rc::new(RefCell::new(File::open("./test/partitions/read.db").unwrap()));
 
-        let partition = CranePartition::new(1, 0, 24, 0, Rc::downgrade(&file));
+        let partition = CranePartition::new(1, 0, 24, 0, Rc::downgrade(&file), Rc::downgrade(&file));
 
         let root_partition = RootPartition::import_from(partition);
 
