@@ -142,7 +142,7 @@ mod test {
         f1.seek(SeekFrom::Start(1)).unwrap();
         let h  = (&f1).bytes().next().unwrap().unwrap().clone();
 
-        assert_eq!(v, h);
+        assert!(v != h);
     }
 }
 

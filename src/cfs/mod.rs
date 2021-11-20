@@ -5,6 +5,8 @@ mod reader;
 mod crane_reader;
 mod root_partition;
 mod buffer;
+mod crane_disk;
+mod schema;
 
 #[derive(Debug)]
 pub struct FSError {
