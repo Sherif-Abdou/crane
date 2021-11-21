@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, vec};
 use lazy_static::lazy_static;
 
 use crate::{cfs::{buffer::Buffer, reader::Reader, schema::DataValue}};
@@ -7,6 +7,7 @@ use super::{crane_partition::CranePartition, schema::CraneSchema, writer::Writer
 
 lazy_static! {
     static ref PARTITION_SCHEMA: CraneSchema = CraneSchema::new(vec![
+        DataValue::UInt64(0),
         DataValue::UInt64(0),
         DataValue::UInt64(0),
         DataValue::UInt64(0),
@@ -19,6 +20,7 @@ pub struct RootPartition {
     pub partition_starts: Vec<u64>,
     pub partition_ends: Vec<u64>,
     pub init_lens: Vec<u64>,
+    pub partition_types: Vec<u64>,
 }
 
 impl RootPartition {
@@ -28,6 +30,7 @@ impl RootPartition {
             partition_starts: vec![],
             partition_ends: vec![],
             init_lens: vec![],
+            partition_types: vec![],
         };
 
         root.read();
@@ -41,6 +44,7 @@ impl RootPartition {
             partition_starts: vec![],
             partition_ends: vec![],
             init_lens: vec![],
+            partition_types: vec![],
         }
     }
 
@@ -52,24 +56,28 @@ impl RootPartition {
         let mut new_starts: Vec<u64> = vec![];
         let mut new_ends: Vec<u64> = vec![];
         let mut init_lens: Vec<u64> = vec![];
+        let mut partition_types: Vec<u64> = vec![];
         let mut bytes = Buffer::new(self.partition.read_sectors(0, 12).unwrap());
 
         while !bytes.empty() {
             let values = PARTITION_SCHEMA.parse_bytes(&mut bytes);
             
-            if let (DataValue::UInt64(start), DataValue::UInt64(end), DataValue::UInt64(init_len)) = (&values[0], &values[1], &values[2]) {
+            if let (DataValue::UInt64(start), DataValue::UInt64(end), DataValue::UInt64(init_len), DataValue::UInt64(p_type)) 
+                = (&values[0], &values[1], &values[2], &values[3]) {
                 if *start == 0 && *end == 0 {
                     break;
                 }
                 new_starts.push(*start);
                 new_ends.push(*end);
                 init_lens.push(*init_len);
+                partition_types.push(*p_type);
             }
        }
 
         self.partition_starts = new_starts;
         self.partition_ends = new_ends;
         self.init_lens = init_lens;
+        self.partition_types = partition_types;
     }
 
     pub fn write(&mut self) {
@@ -82,6 +90,7 @@ impl RootPartition {
                 DataValue::UInt64(self.partition_starts[i]),
                 DataValue::UInt64(self.partition_ends[i]),
                 DataValue::UInt64(self.init_lens[i]),
+                DataValue::UInt64(0),
             ]);
             self.partition.write_sectors(0, len*(i as u64), &bytes).unwrap();
         }
