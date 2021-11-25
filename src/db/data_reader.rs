@@ -39,3 +39,46 @@ impl DataReader {
         None
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::fs::{File, OpenOptions};
+    use super::*;
+
+    use crate::cfs::CraneDisk;
+
+
+    fn generate_disk() -> CraneDisk {
+        let read = File::open("test/data/read.db").unwrap();
+        let write = OpenOptions::new().write(true).open("test/data/read.db").unwrap();
+
+        let crane = CraneDisk::from_file(read, write);
+
+        crane
+    }
+
+    #[test]
+    pub fn test_data_read() {
+        let disk = generate_disk();
+        
+        let schema = CraneSchema::new(vec![
+            DataValue::UInt64(0),
+            DataValue::UInt64(0),
+        ]);
+
+        let partitions = vec![
+            disk.get_partition_with_id(2).clone()
+        ];
+
+        let tree = ItemTree::from_partition(&mut *disk.get_partition_with_id(1).borrow_mut(), None);
+
+        let reader = DataReader::new(partitions, schema, Rc::new(RefCell::new(tree)));
+
+        let res = reader.get_value(1);
+
+        assert_ne!(res, None, "Not equal");
+        let val = res.unwrap();
+        assert_eq!(val[0], DataValue::UInt64(5));
+        assert_eq!(val[1], DataValue::UInt64(6));
+    }
+}

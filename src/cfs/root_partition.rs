@@ -122,7 +122,7 @@ mod tests {
     fn test_partition_read() {
         let file = Rc::new(RefCell::new(File::open("./test/partitions/read.db").unwrap()));
 
-        let partition = CranePartition::new(1, 0, 24, 0, Rc::downgrade(&file), Rc::downgrade(&file));
+        let partition = CranePartition::new(1, 0, 12, 0, Rc::downgrade(&file), Rc::downgrade(&file));
 
         let root_partition = RootPartition::import_from(partition);
 

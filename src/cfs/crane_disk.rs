@@ -135,6 +135,7 @@ mod test {
 
     #[test]
     fn read_disk() {
+        test_new_disk();
         let write_file = OpenOptions::new().write(true).open("./test/disk/disk.db").unwrap();
         let read_file = File::open("./test/disk/disk.db").unwrap();
 
