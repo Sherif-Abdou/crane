@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::cfs::{CranePartition, CraneSchema, DataValue, Writer};
+use crate::{SECTOR_LENGTH, cfs::{CranePartition, CraneSchema, DataValue, Writer}};
 
 use super::item_tree::ItemTree;
 
@@ -24,7 +24,7 @@ impl DataWriter {
 
     pub fn write_value(&mut self, values: Vec<DataValue>) {
         let mut i: usize = 0;
-        while (self.partitions[i as usize].borrow().total_len() - self.partitions[i as usize].borrow().initialized_len)*256 < self.schema.len() {
+        while (self.partitions[i as usize].borrow().total_len() - self.partitions[i as usize].borrow().initialized_len)*(SECTOR_LENGTH as u64) < self.schema.len() {
             i += 1;
         }
 

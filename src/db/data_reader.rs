@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::cfs::{Buffer, CranePartition, CraneSchema, DataValue, Reader};
+use crate::{SECTOR_LENGTH, cfs::{Buffer, CranePartition, CraneSchema, DataValue, Reader}};
 
 use super::item_tree::ItemTree;
 
@@ -26,9 +26,11 @@ impl DataReader {
     pub fn get_value(&self, key: u64) -> Option<Vec<DataValue>> {
         if let Some(position) = self.tree.borrow().get(key) {
             let value = self.partitions.iter().filter(|p| p.borrow().id() == position.partition).next().unwrap();
+            
+            let s = SECTOR_LENGTH as u64;
 
-            let start_sector =  position.offset / 256;
-            let start_offset = position.offset % 256;
+            let start_sector =  position.offset / s;
+            let start_offset = position.offset % s;
 
             let mut buf = Buffer::new(value.borrow_mut().read_sectors(start_sector, start_sector+1).unwrap());
 

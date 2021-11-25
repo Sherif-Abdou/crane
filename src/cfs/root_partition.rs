@@ -57,7 +57,7 @@ impl RootPartition {
         let mut new_ends: Vec<u64> = vec![];
         let mut init_lens: Vec<u64> = vec![];
         let mut partition_types: Vec<u64> = vec![];
-        let mut bytes = Buffer::new(self.partition.read_sectors(0, 12).unwrap());
+        let mut bytes = Buffer::new(self.partition.read_sectors(0, 12).expect("Couldn't read partition map"));
 
         while !bytes.empty() {
             let values = PARTITION_SCHEMA.parse_bytes(&mut bytes);

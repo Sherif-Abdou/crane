@@ -1,8 +1,8 @@
 use std::{cell::RefCell, fs::File, io::{Read, Seek, SeekFrom}, rc::Weak, slice};
 
-use super::{FSError, reader::{Reader}};
+use crate::SECTOR_LENGTH;
 
-const SECTOR_LENGTH: u64 = 256;
+use super::{FSError, reader::{Reader}};
 
 pub struct CraneReader {
     sector_length: u64,
@@ -14,7 +14,7 @@ pub struct CraneReader {
 impl CraneReader {
     pub fn new(start: u64, end: u64, file: Weak<RefCell<File>>) -> Self {
         CraneReader {
-            sector_length: SECTOR_LENGTH,
+            sector_length: SECTOR_LENGTH as u64,
             start_byte: start,
             end_byte: end,
             file

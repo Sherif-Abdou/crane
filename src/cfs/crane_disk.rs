@@ -1,8 +1,8 @@
 use std::{cell::RefCell, fs::File, io::{Seek, SeekFrom, Write}, rc::Rc};
 
-use super::{crane_partition::CranePartition, root_partition::{self, RootPartition}};
+use crate::SECTOR_LENGTH;
 
-const SECTOR_LENGTH: usize = 256;
+use super::{crane_partition::CranePartition, root_partition::{self, RootPartition}};
 
 
 pub struct CraneDisk {

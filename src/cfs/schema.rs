@@ -60,12 +60,13 @@ impl DataValue {
     }
 
     pub fn from_bytes(bytes: Vec<u8>, d_type: &mut DataValue) {
+        let parse_err = "Couldn't parse value from bytes";
         let new_val = match d_type {
-            Self::Int8(_) => Self::Int8(i8::from_be_bytes(bytes[..].try_into().unwrap())),
-            Self::Int16(_) => Self::Int16(i16::from_be_bytes(bytes[..].try_into().unwrap())),
-            Self::Int32(_) => Self::Int32(i32::from_be_bytes(bytes[..].try_into().unwrap())),
-            Self::Int64(_) => Self::Int64(i64::from_be_bytes(bytes[..].try_into().unwrap())),
-            Self::UInt64(_) => Self::UInt64(u64::from_be_bytes(bytes[..].try_into().unwrap())),
+            Self::Int8(_) => Self::Int8(i8::from_be_bytes(bytes[..].try_into().expect(parse_err))),
+            Self::Int16(_) => Self::Int16(i16::from_be_bytes(bytes[..].try_into().expect(parse_err))),
+            Self::Int32(_) => Self::Int32(i32::from_be_bytes(bytes[..].try_into().expect(parse_err))),
+            Self::Int64(_) => Self::Int64(i64::from_be_bytes(bytes[..].try_into().expect(parse_err))),
+            Self::UInt64(_) => Self::UInt64(u64::from_be_bytes(bytes[..].try_into().expect(parse_err))),
             Self::Bool(_) => unimplemented!(),
             Self::Varchar(_) => unimplemented!(),
             Self::Fixchar(_, l) => Self::Fixchar(String::from_utf8_lossy(&bytes).to_string(), *l),
