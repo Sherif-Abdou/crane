@@ -35,7 +35,7 @@ impl Writer for CraneWriter {
         if let Some(filerc) = self.file.upgrade() {
             let mut f = filerc.borrow_mut();
 
-            f.seek(SeekFrom::Start(start_byte + offset)).unwrap();
+            f.seek(SeekFrom::Start(start_byte + offset)).expect("Unable to shift in file");
 
             f.write_all(bytes).expect("Failure writing bytes to db");
             return Ok(());

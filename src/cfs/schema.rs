@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, fmt::Debug};
 
 use super::buffer::{self, Buffer};
 
@@ -46,6 +46,19 @@ impl DataValue {
         }
     }
 
+    pub fn id(&self) -> u16 {
+        match &self {
+            Self::Int8(_) => 0,
+            Self::Int16(_) => 1,
+            Self::Int32(_) => 2,
+            Self::Int64(_) => 3,
+            Self::UInt64(_) => 4,
+            Self::Fixchar(_, _) => 5,
+            Self::Bool(_) => 6,
+            Self::Varchar(_) => 7,
+        }
+    }
+
     pub fn from_bytes(bytes: Vec<u8>, d_type: &mut DataValue) {
         let new_val = match d_type {
             Self::Int8(_) => Self::Int8(i8::from_be_bytes(bytes[..].try_into().unwrap())),
@@ -62,6 +75,7 @@ impl DataValue {
     }
 }
 
+#[derive(Clone)]
 pub struct CraneSchema {
     pub types: Vec<DataValue>
 }

@@ -80,8 +80,9 @@ impl ItemTree {
         partition.write_sectors(0, 0, self.to_bytes()[..].try_into().unwrap()).unwrap();
     }
 
-    pub fn from_partition(partition: &mut CranePartition) -> Self {
-        let mut buffer = Buffer::new(partition.read_sectors(0, partition.total_len()).unwrap());
+    pub fn from_partition(partition: &mut CranePartition, offset: Option<u64>) -> Self {
+        let o = offset.unwrap_or(0);
+        let mut buffer = Buffer::new(partition.read_sectors(o, partition.total_len()+o).unwrap());
 
         Self::from_bytes(&mut buffer)
     }

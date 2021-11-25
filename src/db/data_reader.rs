@@ -7,14 +7,14 @@ use super::item_tree::ItemTree;
 
 type Partition = Rc<RefCell<CranePartition>>;
 
-struct DataReader<'a> {
+pub struct DataReader {
     pub partitions: Vec<Partition>,
-    pub tree: &'a ItemTree,
+    pub tree: Rc<RefCell<ItemTree>>,
     schema: CraneSchema,
 }
 
-impl<'a> DataReader<'a> {
-    pub fn new(partitions: Vec<Partition>, tree: &'a ItemTree, schema: CraneSchema) -> Self {
+impl DataReader {
+    pub fn new(partitions: Vec<Partition>, schema: CraneSchema, tree: Rc<RefCell<ItemTree>>) -> Self {
         Self {
             partitions,
             tree,
@@ -24,7 +24,7 @@ impl<'a> DataReader<'a> {
 
     /// Retrieves the value at the key in whatever partition it is in.
     pub fn get_value(&self, key: u64) -> Option<Vec<DataValue>> {
-        if let Some(position) = self.tree.get(key) {
+        if let Some(position) = self.tree.borrow().get(key) {
             let value = self.partitions.iter().filter(|p| p.borrow().id() == position.partition).next().unwrap();
 
             let start_sector =  position.offset / 256;

@@ -7,7 +7,7 @@ const SECTOR_LENGTH: usize = 256;
 
 pub struct CraneDisk {
     root_partition: RootPartition,
-    partitions: Vec<CranePartition>,
+    pub partitions: Vec<Rc<RefCell<CranePartition>>>,
     read_file: Rc<RefCell<File>>,
     write_file: Rc<RefCell<File>>,
 }
@@ -24,10 +24,11 @@ impl CraneDisk {
         let total_lens = &root_partition.compute_lens();
         let init_lens = &root_partition.init_lens;
 
-        let partition_map: Vec<CranePartition> = root_partition.partition_starts.iter()
+        let partition_map: Vec<Rc<RefCell<CranePartition>>> = root_partition.partition_starts.iter()
             .filter(|x| **x != 0)
             .enumerate()
             .map(|(i, v)| CranePartition::new((i+1) as u64, *v, total_lens[i], init_lens[i], Rc::downgrade(&read_rc), Rc::downgrade(&write_rc)))
+            .map(|v| Rc::new(RefCell::new(v)))
             .collect();
 
         CraneDisk {
@@ -73,14 +74,21 @@ impl CraneDisk {
         self.update_root();
     }
 
-    pub fn append_partition(&mut self, sector_length: u64) {
+    pub fn append_partition(&mut self, sector_length: u64) -> u64 {
         let old_len = self.len();
         let new_len = self.add_sectors(sector_length);
-        let partition = CranePartition::new((self.partitions.len()+1) as u64, old_len, new_len-old_len, 0, 
+        let id = (self.partitions.len() as u64) + 1;
+        let partition = CranePartition::new(id, old_len, new_len-old_len, 0, 
         Rc::downgrade(&self.read_file), Rc::downgrade(&self.write_file));
 
         self.add_to_root(&partition);
-        self.partitions.push(partition);
+        self.partitions.push(Rc::new(RefCell::new(partition)));
+        
+        id
+    }
+
+    pub fn get_partition_with_id(&self, id: u64) -> &Rc<RefCell<CranePartition>> {
+        &self.partitions[id as usize - 1]
     }
 
     fn add_to_root(&mut self, partition: &CranePartition) {
@@ -92,7 +100,7 @@ impl CraneDisk {
     }
 
     fn update_root(&mut self) {
-        self.root_partition.init_lens = self.partitions.iter().map(|x| x.initialized_len).collect();
+        self.root_partition.init_lens = self.partitions.iter().map(|x| x.borrow().initialized_len).collect();
 
         self.root_partition.write();
     }
@@ -121,7 +129,7 @@ mod test {
         disk.append_partition(8);
         assert_eq!(disk.partitions.len(), 1);
 
-        disk.partitions[0].write_sectors(0, 0, &25u64.to_be_bytes()).unwrap();
+        disk.partitions[0].borrow_mut().write_sectors(0, 0, &25u64.to_be_bytes()).unwrap();
         disk.save();
     }
 
@@ -130,9 +138,9 @@ mod test {
         let write_file = OpenOptions::new().write(true).open("./test/disk/disk.db").unwrap();
         let read_file = File::open("./test/disk/disk.db").unwrap();
 
-        let mut disk = CraneDisk::from_file(read_file, write_file);
+        let disk = CraneDisk::from_file(read_file, write_file);
 
         assert_eq!(disk.partitions.len(), 1);
-        assert_eq!(disk.partitions[0].initialized_len, 8);
+        assert_eq!(disk.partitions[0].borrow().initialized_len, 8);
     }
 }

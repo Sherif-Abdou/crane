@@ -36,9 +36,9 @@ impl Reader for CraneReader {
         if let Some(raw_file) = self.file.upgrade() {
             let mut f = (&raw_file).borrow_mut(); 
                 
-            f.seek(SeekFrom::Start(start_byte)).unwrap();
+            f.seek(SeekFrom::Start(start_byte)).expect("Unable to shift file");
 
-            let buffer = (&*f).bytes().take(len as usize).map(|v| v.unwrap()).collect();
+            let buffer = (&*f).bytes().take(len as usize).map(|v| v.expect("Unable to read byte in file")).collect();
 
             return Ok(buffer);
         }

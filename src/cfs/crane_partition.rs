@@ -48,7 +48,7 @@ impl Writer for CranePartition {
     fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), FSError> {
         let s = start + self.offset;
         let e = s + offset + (bytes.len() as u64);
-        self.initialized_len = max(e-s, self.initialized_len);
+        self.initialized_len = max(start*256 + offset + (bytes.len() as u64), self.initialized_len);
         self.writer.write_sectors(s,offset, bytes)
     }
 
