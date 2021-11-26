@@ -31,6 +31,21 @@ impl DataWriter {
         return Ok(());
     }
 
+    pub fn update_value(&mut self, key: u64, values: Vec<DataValue>) -> Result<(), DataError> {
+        let pos = self.tree.borrow().get(key).expect("Invalid key");
+        let i = self.id_to_index(pos.partition).unwrap();
+        let off =pos.offset;
+
+        self.partitions[i].borrow_mut().write_sectors(0, off, &self.schema.produce_bytes(&values))
+            .unwrap();
+
+        Ok(())
+    }
+
+    fn id_to_index(&self, id: u64) -> Option<usize> {
+        self.partitions.iter().enumerate().filter(|(i,v)| v.borrow().id() == id).map(|(i,v)| i).next()
+    }
+
     fn get_position_for_new(&mut self) -> Result<(usize, u64), DataError> {
         if let Some(res) = self.find_replace_slot() {
             dbg!("used replace slot");

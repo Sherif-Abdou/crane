@@ -2,8 +2,12 @@ use std::{collections::{BTreeMap, HashSet}, convert::TryInto};
 use crate::cfs::{Buffer, CranePartition, Reader, Writer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+
+/// A position of an item on disk
 pub struct Position {
+    /// The partition id of the item.
     pub partition: u64,
+    /// How many bytes from the beginning the item is.
     pub offset: u64,
 }
 
@@ -12,6 +16,7 @@ impl Position {
         Self { partition, offset }
     }  
 
+    /// Turns the position into bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         buf.append(&mut self.partition.to_be_bytes().to_vec());
@@ -20,6 +25,9 @@ impl Position {
         buf
     }
 
+    /// Creates a position from bytes.
+    /// # Arguments
+    /// * `bytes` - The bytes to create the position from.
     pub fn from_bytes(bytes: &mut Buffer) -> Self {
         let partition = u64::from_be_bytes(bytes.consume(8)[..].try_into().unwrap());
         let offset = u64::from_be_bytes(bytes.consume(8)[..].try_into().unwrap());
@@ -93,6 +101,10 @@ impl ItemTree {
 
     pub fn get(&self, key: u64) -> Option<Position> {
         self.tree.get(&key).cloned()
+    }
+
+    pub fn remove(&mut self, key: u64) {
+        self.tree.remove(&key);
     }
 
     pub fn insert(&mut self, key: u64, partition: u64, offset: u64) {

@@ -15,6 +15,16 @@ pub struct CranePartition {
 }
 
 impl CranePartition {
+    //TODO: Create a builder for this, too many constructor arguments
+    /// Creates a partition while assigning a type.
+    /// # Arguments
+    /// * `id` - The partition id.
+    /// * `offset` - How offset the partition is from the start of the file in sectors.
+    /// * `total_len` - How many sectors the partition is.
+    /// * `initialized_len` - How many sectors in the partition that have been initialized.
+    /// * `partition_type` - The type of the partition.
+    /// * `rfile` - The file to read from.
+    /// * `wfile` - The file to write to.
     pub fn with_type(id: u64, offset: u64, total_len: u64, initialized_len: u64, partition_type: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) 
         -> Self {
         let s = offset;
@@ -33,6 +43,14 @@ impl CranePartition {
 
     }
 
+    /// Creates a partition without assigning a type.
+    /// # Arguments
+    /// * `id` - The partition id.
+    /// * `offset` - How offset the partition is from the start of the file in sectors.
+    /// * `total_len` - How many sectors the partition is.
+    /// * `initialized_len` - How many sectors in the partition that have been initialized.
+    /// * `rfile` - The file to read from.
+    /// * `wfile` - The file to write to.
     pub fn new(id: u64, offset: u64, total_len: u64, initialized_len: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) -> Self {
         let s = offset;
         let e = total_len + offset;
@@ -49,18 +67,22 @@ impl CranePartition {
         }
     }
 
+    /// Returns the offset of the partition.
     pub fn offset(&self) -> u64 {
         self.offset
     }
 
+    // Returns the total length of the partition in sectors.
     pub fn total_len(&self) -> u64 {
         self.total_len
     }
 
+    /// Returns the total length of the partition in bytes.
     pub fn total_bytes(&self) -> u64 {
         self.total_len * (SECTOR_LENGTH as u64)
     }
 
+    /// Returns the id of the partition.
     pub fn id(&self) -> u64 {
         self.id
     }
