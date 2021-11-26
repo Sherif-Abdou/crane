@@ -162,7 +162,7 @@ impl DataManager {
 
 #[cfg(test)]
 mod test {
-    use std::fs::{File, OpenOptions};
+    use std::{borrow::Borrow, fs::{File, OpenOptions}};
 
     use super::*;
 
@@ -201,12 +201,17 @@ mod test {
         let schema = get_schema();
         let mut manager = DataManager::create_to_disk(&mut disk, 1, schema);
 
-        manager.data_writer.write_value(vec![
+        let values = vec![
             DataValue::UInt64(1),
             DataValue::UInt64(5),
             DataValue::UInt64(2),
             DataValue::Fixchar("hello world".to_owned(), 32),
-        ]).unwrap();
+        ];
+
+        manager.data_writer.write_value(values.clone()).unwrap();
+        manager.data_writer.write_value(values.clone()).unwrap();
+        manager.data_writer.write_value(values.clone()).unwrap();
+        manager.data_writer.write_value(values.clone()).unwrap();
 
         manager.save();
         disk.save();
@@ -221,7 +226,7 @@ mod test {
         let manager = DataManager::from_disk(&disk, 1);
 
 
-        let value = manager.data_reader.get_value(1);
+        let value = manager.data_reader.get_value(3);
 
         assert_ne!(value, None);
 

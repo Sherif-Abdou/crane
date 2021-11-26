@@ -2,7 +2,7 @@ use std::{cell::RefCell, io::Error, rc::Rc};
 
 use crate::{SECTOR_LENGTH, cfs::{CranePartition, CraneSchema, DataValue, FSError, Writer}};
 
-use super::{DataError, item_tree::ItemTree};
+use super::{DataError, item_tree::{ItemTree, Position}};
 
 
 type Partition = Rc<RefCell<CranePartition>>;
@@ -23,20 +23,57 @@ impl DataWriter {
     }
 
     pub fn write_value(&mut self, values: Vec<DataValue>) -> Result<(), DataError> {
-        let mut i: usize = 0;
-        while (self.partitions[i as usize].borrow().total_len() - self.partitions[i as usize].borrow().initialized_len)*(SECTOR_LENGTH as u64) < self.schema.len() {
-            i += 1;
-            if i >= self.partitions.len() {
-                return Err(DataError::OutOfStorage);
-            }
-        }
-
-        let off = self.partitions[i].borrow().initialized_len;
+        let (i, off) = self.get_position_for_new()?;
         let m = self.tree.borrow().max_key();
         self.tree.borrow_mut().insert(m+1,         self.partitions[i].borrow().id(), off);
         self.partitions[i].borrow_mut().write_sectors(0, off, &self.schema.produce_bytes(&values))
             .unwrap();
         return Ok(());
+    }
+
+    fn get_position_for_new(&mut self) -> Result<(usize, u64), DataError> {
+        if let Some(res) = self.find_replace_slot() {
+            dbg!("used replace slot");
+            return Ok(res);
+        }
+        dbg!("used fresh slot");
+        let i = self.find_fresh_slot()?;
+        let off = self.partitions[i].borrow().initialized_len;
+        Ok((i, off))
+    }
+
+    fn find_fresh_slot(&mut self) -> Result<usize, DataError> {
+        let mut i: usize = 0;
+        // dbg!(self.partitions[i as usize].borrow().total_len() , self.partitions[i as usize].borrow().initialized_len);
+        while (self.partitions[i as usize].borrow().total_len()*(SECTOR_LENGTH as u64) - self.partitions[i as usize].borrow().initialized_len)*(SECTOR_LENGTH as u64) < self.schema.len() {
+            i += 1;
+            if i >= self.partitions.len() {
+                return Err(DataError::OutOfStorage);
+            }
+        dbg!(self.partitions[i as usize].borrow().total_len() - self.partitions[i as usize].borrow().initialized_len);
+        }
+        Ok(i)
+    }
+
+    fn find_replace_slot(&mut self) -> Option<(usize, u64)> {
+        let ids: Vec<_> = self.partitions.iter().map(|v| v.borrow().id()).collect();
+        let tree = self.tree.borrow();
+        let positions = tree.position_set();
+        let jump = self.schema.len();
+        for (i, id) in ids.iter().enumerate() {
+            let mut curr_offset = 0u64;
+
+            while curr_offset + self.schema.len() < self.partitions[i].borrow().total_bytes() {
+                curr_offset += jump;
+
+                let pos = Position::new(*id, curr_offset);
+
+                if !positions.contains(&pos) {
+                    return Some((i, curr_offset));
+                }
+            }
+        }
+        None
     }
 
     pub fn save_tree(&self, partition: &mut CranePartition) {

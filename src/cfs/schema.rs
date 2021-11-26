@@ -116,7 +116,6 @@ impl CraneSchema {
     pub fn parse_bytes(&self, bytes: &mut Buffer) -> Vec<DataValue> {
         let mut values = self.types.clone();
 
-        dbg!(&values);
 
         values.iter_mut()
             // .rev() // Last types written are first types parsed

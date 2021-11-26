@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, convert::TryInto};
+use std::{collections::{BTreeMap, HashSet}, convert::TryInto};
 use crate::cfs::{Buffer, CranePartition, Reader, Writer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -74,6 +74,10 @@ impl ItemTree {
             tree,
             max_key: m,
         }
+    }
+
+    pub fn position_set(&self) -> HashSet<Position> {
+        self.tree.values().cloned().collect()
     }
 
     pub fn to_partition(&self, partition: &mut CranePartition) {

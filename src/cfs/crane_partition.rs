@@ -57,6 +57,10 @@ impl CranePartition {
         self.total_len
     }
 
+    pub fn total_bytes(&self) -> u64 {
+        self.total_len * (SECTOR_LENGTH as u64)
+    }
+
     pub fn id(&self) -> u64 {
         self.id
     }
