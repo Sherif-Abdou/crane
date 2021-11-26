@@ -24,6 +24,8 @@ impl DataReader {
 
     /// Retrieves the value at the key in whatever partition it is in.
     pub fn get_value(&self, key: u64) -> Option<Vec<DataValue>> {
+        let rdiff: f64 = (self.schema.len() as f64)/(SECTOR_LENGTH as f64);
+        let diff = f64::ceil(rdiff) as u64;
         if let Some(position) = self.tree.borrow().get(key) {
             let value = self.partitions.iter().filter(|p| p.borrow().id() == position.partition).next().unwrap();
             
@@ -32,7 +34,7 @@ impl DataReader {
             let start_sector =  position.offset / s;
             let start_offset = position.offset % s;
 
-            let mut buf = Buffer::new(value.borrow_mut().read_sectors(start_sector, start_sector+1).unwrap());
+            let mut buf = Buffer::new(value.borrow_mut().read_sectors(start_sector, start_sector+diff).unwrap());
 
             buf.consume(start_offset);
             return Some(self.schema.parse_bytes(&mut buf));

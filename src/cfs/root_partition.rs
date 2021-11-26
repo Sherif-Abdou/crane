@@ -74,6 +74,7 @@ impl RootPartition {
             }
        }
 
+
         self.partition_starts = new_starts;
         self.partition_ends = new_ends;
         self.init_lens = init_lens;
@@ -83,6 +84,7 @@ impl RootPartition {
     pub fn write(&mut self) {
         assert_eq!(self.partition_starts.len(), self.partition_ends.len());
         assert_eq!(self.partition_starts.len(), self.init_lens.len());
+        assert_eq!(self.partition_starts.len(), self.partition_types.len());
         let len = PARTITION_SCHEMA.len();
 
         for i in 0..(self.partition_starts.len()) {
@@ -90,7 +92,7 @@ impl RootPartition {
                 DataValue::UInt64(self.partition_starts[i]),
                 DataValue::UInt64(self.partition_ends[i]),
                 DataValue::UInt64(self.init_lens[i]),
-                DataValue::UInt64(0),
+                DataValue::UInt64(self.partition_types[i]),
             ]);
             self.partition.write_sectors(0, len*(i as u64), &bytes).unwrap();
         }
@@ -114,6 +116,7 @@ mod tests {
         root_partition.partition_starts.append(&mut vec![20, 120, 282]);
         root_partition.partition_ends.append(&mut vec![119, 281, 300]);
         root_partition.init_lens.append(&mut vec![40, 100, 18]);
+        root_partition.partition_types.append(&mut vec![1, 2, 4]);
 
         root_partition.write();
     }

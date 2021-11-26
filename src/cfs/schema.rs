@@ -25,8 +25,10 @@ impl DataValue {
             Self::Varchar(s) => (s.as_bytes().to_vec()),
             Self::Fixchar(s, i) => {
                 let mut v = s.as_bytes().to_vec();
-                v.push(0u8);
-                v.append(&mut i.to_ne_bytes().to_vec());
+                while v.len() < ((*i) as usize) {
+                    v.push(0u8);
+                }
+                v.append(&mut i.to_be_bytes().to_vec());
                 v
             },
             _ => (vec![]),
@@ -40,7 +42,7 @@ impl DataValue {
             Self::Int32(_) => Some(4),
             Self::Int64(_) => Some(8),
             Self::UInt64(_) => Some(8),
-            Self::Fixchar(_, i) => Some(*i),
+            Self::Fixchar(_, i) => Some(*i + 8),
             Self::Bool(_) => Some(1),
             Self::Varchar(_) => None,
         }
@@ -48,14 +50,27 @@ impl DataValue {
 
     pub fn id(&self) -> u16 {
         match &self {
-            Self::Int8(_) => 0,
-            Self::Int16(_) => 1,
-            Self::Int32(_) => 2,
-            Self::Int64(_) => 3,
-            Self::UInt64(_) => 4,
-            Self::Fixchar(_, _) => 5,
-            Self::Bool(_) => 6,
-            Self::Varchar(_) => 7,
+            Self::Int8(_) => 1,
+            Self::Int16(_) => 2,
+            Self::Int32(_) => 3,
+            Self::Int64(_) => 4,
+            Self::UInt64(_) => 5,
+            Self::Fixchar(_, _) => 6,
+            Self::Bool(_) => 7,
+            Self::Varchar(_) => 8,
+        }
+    }
+
+    pub fn from_id(id: u16, metadata: u64) -> Self {
+        match id {
+            1 => Self::Int8(0),
+            2 => Self::Int16(0),
+            3 => Self::Int32(0),
+            4 => Self::Int64(0),
+            5 => Self::UInt64(0),
+            6 => Self::Fixchar("".to_string(), metadata),
+            7 => Self::Bool(false),
+            _ => unimplemented!(),
         }
     }
 
@@ -69,7 +84,17 @@ impl DataValue {
             Self::UInt64(_) => Self::UInt64(u64::from_be_bytes(bytes[..].try_into().expect(parse_err))),
             Self::Bool(_) => unimplemented!(),
             Self::Varchar(_) => unimplemented!(),
-            Self::Fixchar(_, l) => Self::Fixchar(String::from_utf8_lossy(&bytes).to_string(), *l),
+            Self::Fixchar(_, _) => {
+                let (s, e) = (bytes.len()-8, bytes.len());
+                dbg!(s, e);
+                let len_bytes = &bytes[s..e];
+                let len = u64::from_be_bytes(len_bytes.try_into().expect(parse_err)) as usize;
+                let str_bytes = &bytes[0..len];
+                let str = String::from_utf8_lossy(str_bytes).to_string();
+                let str = str.replace("\0", "");
+
+                Self::Fixchar(str, len as u64)
+            },
         };
 
         *d_type = new_val;
@@ -90,6 +115,8 @@ impl CraneSchema {
 
     pub fn parse_bytes(&self, bytes: &mut Buffer) -> Vec<DataValue> {
         let mut values = self.types.clone();
+
+        dbg!(&values);
 
         values.iter_mut()
             // .rev() // Last types written are first types parsed

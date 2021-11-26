@@ -8,12 +8,31 @@ pub struct CranePartition {
     id: u64,
     offset: u64,
     total_len: u64,
+    pub partition_type: u64,
     pub initialized_len: u64,
     writer: Box<dyn Writer>,
     reader: Box<dyn Reader>
 }
 
 impl CranePartition {
+    pub fn with_type(id: u64, offset: u64, total_len: u64, initialized_len: u64, partition_type: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) 
+        -> Self {
+        let s = offset;
+        let e = total_len + offset;
+        let reader = CraneReader::new(s, e, rfile.clone());
+        let writer = CraneWriter::new(s, e, wfile.clone());
+        CranePartition {
+            id,
+            offset,
+            total_len,
+            initialized_len,
+            partition_type,
+            reader: Box::new(reader),
+            writer: Box::new(writer),
+        }
+
+    }
+
     pub fn new(id: u64, offset: u64, total_len: u64, initialized_len: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) -> Self {
         let s = offset;
         let e = total_len + offset;
@@ -24,6 +43,7 @@ impl CranePartition {
             offset,
             total_len,
             initialized_len,
+            partition_type: 0,
             reader: Box::new(reader),
             writer: Box::new(writer),
         }

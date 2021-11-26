@@ -1,8 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, io::Error, rc::Rc};
 
-use crate::{SECTOR_LENGTH, cfs::{CranePartition, CraneSchema, DataValue, Writer}};
+use crate::{SECTOR_LENGTH, cfs::{CranePartition, CraneSchema, DataValue, FSError, Writer}};
 
-use super::item_tree::ItemTree;
+use super::{DataError, item_tree::ItemTree};
 
 
 type Partition = Rc<RefCell<CranePartition>>;
@@ -22,10 +22,13 @@ impl DataWriter {
         }
     }
 
-    pub fn write_value(&mut self, values: Vec<DataValue>) {
+    pub fn write_value(&mut self, values: Vec<DataValue>) -> Result<(), DataError> {
         let mut i: usize = 0;
         while (self.partitions[i as usize].borrow().total_len() - self.partitions[i as usize].borrow().initialized_len)*(SECTOR_LENGTH as u64) < self.schema.len() {
             i += 1;
+            if i >= self.partitions.len() {
+                return Err(DataError::OutOfStorage);
+            }
         }
 
         let off = self.partitions[i].borrow().initialized_len;
@@ -33,12 +36,14 @@ impl DataWriter {
         self.tree.borrow_mut().insert(m+1,         self.partitions[i].borrow().id(), off);
         self.partitions[i].borrow_mut().write_sectors(0, off, &self.schema.produce_bytes(&values))
             .unwrap();
+        return Ok(());
     }
 
     pub fn save_tree(&self, partition: &mut CranePartition) {
         // dbg!(self.tree.borrow().to_bytes());
         self.tree.borrow_mut().to_partition(partition);
     }
+
 }
 
 
@@ -63,8 +68,8 @@ mod test {
     fn test_write() {
         let mut disk = generate_disk();
 
-        let tree_id = disk.append_partition(2);
-        let data_id = disk.append_partition(8);
+        let tree_id = disk.append_partition(2, 0);
+        let data_id = disk.append_partition(8, 0);
         assert!(tree_id != data_id);
         let tree = disk.get_partition_with_id(tree_id);
 
@@ -83,7 +88,7 @@ mod test {
         writer.write_value(vec![
             DataValue::UInt64(5),
             DataValue::UInt64(6),
-        ]);
+        ]).unwrap();
 
         writer.save_tree(&mut *tree.borrow_mut());
         disk.save();

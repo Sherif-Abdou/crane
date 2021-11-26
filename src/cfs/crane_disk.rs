@@ -6,7 +6,7 @@ use super::{crane_partition::CranePartition, root_partition::{self, RootPartitio
 
 
 pub struct CraneDisk {
-    root_partition: RootPartition,
+    pub root_partition: RootPartition,
     pub partitions: Vec<Rc<RefCell<CranePartition>>>,
     read_file: Rc<RefCell<File>>,
     write_file: Rc<RefCell<File>>,
@@ -23,11 +23,13 @@ impl CraneDisk {
         let root_partition = RootPartition::import_from(rpartition);
         let total_lens = &root_partition.compute_lens();
         let init_lens = &root_partition.init_lens;
+        let types = &root_partition.partition_types;
 
         let partition_map: Vec<Rc<RefCell<CranePartition>>> = root_partition.partition_starts.iter()
             .filter(|x| **x != 0)
             .enumerate()
-            .map(|(i, v)| CranePartition::new((i+1) as u64, *v, total_lens[i], init_lens[i], Rc::downgrade(&read_rc), Rc::downgrade(&write_rc)))
+            .map(|(i, v)| CranePartition::with_type((i+1) as u64, *v, total_lens[i], init_lens[i],
+            types[i], Rc::downgrade(&read_rc), Rc::downgrade(&write_rc)))
             .map(|v| Rc::new(RefCell::new(v)))
             .collect();
 
@@ -74,11 +76,11 @@ impl CraneDisk {
         self.update_root();
     }
 
-    pub fn append_partition(&mut self, sector_length: u64) -> u64 {
+    pub fn append_partition(&mut self, sector_length: u64, partition_type: u64) -> u64 {
         let old_len = self.len();
         let new_len = self.add_sectors(sector_length);
         let id = (self.partitions.len() as u64) + 1;
-        let partition = CranePartition::new(id, old_len, new_len-old_len, 0, 
+        let partition = CranePartition::with_type(id, old_len, new_len-old_len, 0, partition_type,
         Rc::downgrade(&self.read_file), Rc::downgrade(&self.write_file));
 
         self.add_to_root(&partition);
@@ -91,10 +93,17 @@ impl CraneDisk {
         &self.partitions[id as usize - 1]
     }
 
+    pub fn get_partition_by_type(&self, t: u64) -> Vec<&Rc<RefCell<CranePartition>>> {
+        self.partitions.iter()
+            .filter(|x| x.borrow().partition_type == t)
+            .collect()
+    }
+
     fn add_to_root(&mut self, partition: &CranePartition) {
         self.root_partition.partition_starts.push(partition.offset());
         self.root_partition.partition_ends.push(partition.total_len() + partition.offset());
         self.root_partition.init_lens.push(partition.initialized_len);
+        self.root_partition.partition_types.push(partition.partition_type);
 
         self.root_partition.write();
     }
@@ -126,7 +135,7 @@ mod test {
 
         let mut disk = CraneDisk::init_file(read_file, write_file);
 
-        disk.append_partition(8);
+        disk.append_partition(8, 0);
         assert_eq!(disk.partitions.len(), 1);
 
         disk.partitions[0].borrow_mut().write_sectors(0, 0, &25u64.to_be_bytes()).unwrap();
