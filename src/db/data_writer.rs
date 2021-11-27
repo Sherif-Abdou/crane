@@ -42,6 +42,12 @@ impl DataWriter {
         Ok(())
     }
 
+    /// Removes value by removing item from key
+    pub fn remove_value(&mut self, key: u64) -> Result<(), DataError> {
+        self.tree.borrow_mut().remove(key);
+        Ok(())
+    }
+
     fn id_to_index(&self, id: u64) -> Option<usize> {
         self.partitions.iter().enumerate().filter(|(i,v)| v.borrow().id() == id).map(|(i,v)| i).next()
     }

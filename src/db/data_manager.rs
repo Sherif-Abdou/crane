@@ -1,10 +1,11 @@
-use std::any::Any;
 use std::convert::TryInto;
 use std::rc::{Rc};
 use std::cell::{RefCell};
 
 use crate::cfs::{Buffer, CraneDisk, CranePartition, CraneSchema, DataValue, Reader, Writer};
 
+use super::DataError;
+use super::data_command::{DataCommand, DataState};
 use super::data_reader::DataReader;
 use super::data_writer::{self, DataWriter};
 use super::item_tree::ItemTree;
@@ -16,6 +17,7 @@ struct DataManager {
     data_partitions: Vec<Partition>,
     tree_partition: Partition,
     schema_partition: Partition,
+    tree: Rc<RefCell<ItemTree>>,
     pub data_writer: DataWriter,
     pub data_reader: DataReader,
 }
@@ -30,6 +32,7 @@ impl DataManager {
             data_partitions,
             tree_partition,
             data_writer,
+            tree,
             data_reader,
             schema_partition,
         }
@@ -69,6 +72,7 @@ impl DataManager {
             schema_partition: (*schema_partition).clone(),
             tree_partition: (*tree_partition).clone(),
             data_writer,
+            tree,
             data_reader,
         }
     }
@@ -98,6 +102,7 @@ impl DataManager {
             data_partitions,
             schema_partition: (*schema_partition).clone(),
             tree_partition: (*tree_partition).clone(),
+            tree,
             data_writer,
             data_reader,
         }
@@ -157,6 +162,16 @@ impl DataManager {
 
     pub fn get_tree_partition(&self) -> &Partition {
         &self.tree_partition
+    }
+
+    pub fn run_command(&mut self, command: &mut dyn DataCommand) -> Result<(), DataError> {
+        let mut state = DataState {
+            schema: &self.schema,
+            tree: &self.tree,
+            data_partitions: self.data_partitions.iter().map(|p| p).collect(),
+        };
+
+        command.execute(&mut state)
     }
 }
 
