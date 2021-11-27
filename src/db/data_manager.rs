@@ -6,8 +6,6 @@ use crate::cfs::{Buffer, CraneDisk, CranePartition, CraneSchema, DataValue, Read
 
 use super::DataError;
 use super::data_command::{DataCommand, DataState};
-use super::data_reader::DataReader;
-use super::data_writer::{self, DataWriter};
 use super::item_tree::ItemTree;
 
 
@@ -18,22 +16,16 @@ struct DataManager {
     tree_partition: Partition,
     schema_partition: Partition,
     tree: Rc<RefCell<ItemTree>>,
-    pub data_writer: DataWriter,
-    pub data_reader: DataReader,
 }
 
 impl DataManager {
     pub fn new(schema: CraneSchema, data_partitions: Vec<Partition>, schema_partition: Partition, tree_partition: Partition) -> Self {
         let tree = Rc::new(RefCell::new(ItemTree::from_partition(&mut *tree_partition.borrow_mut(), None)));
-        let data_writer = DataWriter::new(data_partitions.clone(), schema.clone(), tree.clone());
-        let data_reader = DataReader::new(data_partitions.clone(), schema.clone(), tree.clone());
         Self {
             schema,
             data_partitions,
             tree_partition,
-            data_writer,
             tree,
-            data_reader,
             schema_partition,
         }
     }
@@ -63,17 +55,13 @@ impl DataManager {
 
         let tree = Rc::new(RefCell::new(ItemTree::from_partition(&mut *tree_partition.borrow_mut(), None)));
 
-        let data_writer = DataWriter::new(data_partitions.clone(), schema.clone(), tree.clone());
-        let data_reader = DataReader::new(data_partitions.clone(), schema.clone(), tree.clone());
 
         Self {
             schema,
             data_partitions,
             schema_partition: (*schema_partition).clone(),
             tree_partition: (*tree_partition).clone(),
-            data_writer,
             tree,
-            data_reader,
         }
     }
 
@@ -94,8 +82,6 @@ impl DataManager {
         let schema = Self::load_schema(*schema_partition);
         let tree = Rc::new(RefCell::new(ItemTree::from_partition(&mut *tree_partition.borrow_mut(), None)));
 
-        let data_writer = DataWriter::new(data_partitions.clone(), schema.clone(), tree.clone());
-        let data_reader = DataReader::new(data_partitions.clone(), schema.clone(), tree.clone());
 
         Self {
             schema,
@@ -103,8 +89,6 @@ impl DataManager {
             schema_partition: (*schema_partition).clone(),
             tree_partition: (*tree_partition).clone(),
             tree,
-            data_writer,
-            data_reader,
         }
     }
 
@@ -147,9 +131,16 @@ impl DataManager {
         schema
     }
 
+    
+    fn save_tree(&self) {
+        // dbg!(self.tree.borrow().to_bytes());
+        self.tree.borrow_mut().to_partition(&mut *self.tree_partition.borrow_mut());
+    }
+
+
     pub fn save(&mut self) {
         self.save_schema();
-        self.data_writer.save_tree(&mut *self.tree_partition.borrow_mut());
+        self.save_tree();
     }
 
     pub fn get_schema(&self) -> &CraneSchema {
@@ -164,7 +155,7 @@ impl DataManager {
         &self.tree_partition
     }
 
-    pub fn run_command(&mut self, command: &mut dyn DataCommand) -> Result<(), DataError> {
+    pub fn execute(&mut self, command: &mut dyn DataCommand) -> Result<(), DataError> {
         let mut state = DataState {
             schema: &self.schema,
             tree: &self.tree,
@@ -178,6 +169,8 @@ impl DataManager {
 #[cfg(test)]
 mod test {
     use std::{borrow::Borrow, fs::{File, OpenOptions}};
+
+    use crate::db::data_command::{GetKeyCommand, InsertValueCommand};
 
     use super::*;
 
@@ -223,10 +216,16 @@ mod test {
             DataValue::Fixchar("hello world".to_owned(), 32),
         ];
 
-        manager.data_writer.write_value(values.clone()).unwrap();
-        manager.data_writer.write_value(values.clone()).unwrap();
-        manager.data_writer.write_value(values.clone()).unwrap();
-        manager.data_writer.write_value(values.clone()).unwrap();
+        let mut command = InsertValueCommand::new(values);
+
+        manager.execute(&mut command).expect("Error executing command");
+        manager.execute(&mut command).expect("Error executing command");
+        manager.execute(&mut command).expect("Error executing command");
+        manager.execute(&mut command).expect("Error executing command");
+        // manager.data_writer.write_value(values.clone()).unwrap();
+        // manager.data_writer.write_value(values.clone()).unwrap();
+        // manager.data_writer.write_value(values.clone()).unwrap();
+        // manager.data_writer.write_value(values.clone()).unwrap();
 
         manager.save();
         disk.save();
@@ -238,10 +237,12 @@ mod test {
 
         let disk = load_disk();
 
-        let manager = DataManager::from_disk(&disk, 1);
+        let mut manager = DataManager::from_disk(&disk, 1);
 
+        let mut command = GetKeyCommand::new(3);
+        manager.execute(&mut command).expect("Error running command");
 
-        let value = manager.data_reader.get_value(3);
+        let value = command.get_result();
 
         assert_ne!(value, None);
 

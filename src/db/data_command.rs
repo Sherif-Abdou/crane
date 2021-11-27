@@ -16,9 +16,22 @@ pub trait DataCommand {
     fn execute(&mut self, state: &mut DataState) -> Result<(), DataError>;
 }
 
-struct GetKeyCommand {
+pub struct GetKeyCommand {
     key: u64,
     res: Option<Vec<DataValue>>,
+}
+
+impl GetKeyCommand {
+    pub fn new(key: u64) -> Self {
+        Self {
+            key,
+            res: None
+        }
+    }
+
+    pub fn get_result(&self) -> Option<Vec<DataValue>> {
+        self.res.clone()
+    }
 }
 
 impl DataCommand for GetKeyCommand {
@@ -45,11 +58,17 @@ impl DataCommand for GetKeyCommand {
     }
 }
 
-struct InsertValueCommand {
+pub struct InsertValueCommand {
     value: Vec<DataValue>,
 }
 
 impl InsertValueCommand {
+    pub fn new(value: Vec<DataValue>) -> Self {
+        Self {
+            value
+        }
+    }
+
     fn get_position_for_new(&self, state: &mut DataState) -> Result<(usize, u64), DataError> {
         if let Some(res) = self.find_replace_slot(state) {
             dbg!("used replace slot");
