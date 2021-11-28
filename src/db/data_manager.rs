@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::convert::TryInto;
 use std::rc::{Rc};
 use std::cell::{RefCell};
@@ -9,8 +10,10 @@ use super::data_command::{DataCommand, DataState};
 use super::item_tree::ItemTree;
 
 
+pub const OFFSET: u64 = 0;
+
 type Partition = Rc<RefCell<CranePartition>>;
-struct DataManager {
+pub struct DataManager {
     schema: CraneSchema,
     data_partitions: Vec<Partition>,
     tree_partition: Partition,
@@ -131,7 +134,6 @@ impl DataManager {
         schema
     }
 
-    
     fn save_tree(&self) {
         // dbg!(self.tree.borrow().to_bytes());
         self.tree.borrow_mut().to_partition(&mut *self.tree_partition.borrow_mut());
