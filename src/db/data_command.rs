@@ -122,3 +122,52 @@ impl DataCommand for InsertValueCommand {
         return Ok(());
     }
 }
+
+pub struct UpdateValueCommand {
+    pub value: Vec<DataValue>,
+    pub key: u64
+}
+
+impl UpdateValueCommand {
+    pub fn new(key: u64, value: Vec<DataValue>) -> Self {
+        Self {
+            key,
+            value,
+        }
+    }
+}
+
+impl DataCommand for UpdateValueCommand {
+    fn execute(&mut self, state: &mut DataState) -> Result<(), DataError> {
+        let pos = state.tree.borrow().get(self.key).ok_or(DataError::UnknownKey)?;
+        let off = pos.offset;
+        let p = state.data_partitions.iter()
+            .filter(|v| v.borrow().id() == pos.partition)
+            .next()
+            .ok_or(DataError::UnknownKey)?;
+        let m = state.tree.borrow().max_key();
+        state.tree.borrow_mut().insert(m+1,         p.borrow().id(), off);
+        p.borrow_mut().write_sectors(0, off, &state.schema.produce_bytes(&self.value))
+            .unwrap();
+        return Ok(());
+    }
+}
+
+pub struct RemoveValueCommand {
+    pub key: u64,
+}
+
+impl RemoveValueCommand {
+    pub fn new(key: u64) -> Self {
+        Self {
+            key,
+        }
+    }
+}
+
+impl DataCommand for RemoveValueCommand {
+    fn execute(&mut self, state: &mut DataState) -> Result<(), DataError> {
+        state.tree.borrow_mut().remove(self.key);
+        Ok(())
+    }
+}

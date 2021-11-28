@@ -67,6 +67,7 @@ impl Crane {
                 Self::generate_schemas(self);
                 self.execute_no_recur(schema_slot, command)
             }
+            Err(err) => Err(err),
         }
     }
 
