@@ -6,7 +6,7 @@ use super::writer::{Writer};
 
 const SECTOR_LENGTH: u64 = 256;
 
-pub(crate) struct CraneWriter {
+pub struct CraneWriter {
     sector_length: u64,
     start_byte: u64,
     end_byte: u64,
@@ -14,7 +14,7 @@ pub(crate) struct CraneWriter {
 }
 
 impl CraneWriter {
-    pub(crate) fn new(start: u64, end: u64, file: Weak<RefCell<File>>) -> Self {
+    pub fn new(start: u64, end: u64, file: Weak<RefCell<File>>) -> Self {
         CraneWriter {
             sector_length: SECTOR_LENGTH,
             start_byte: start,
@@ -56,7 +56,7 @@ mod test {
 
     use super::*;
 
-    pub(crate) fn get_db_file() -> File {
+    pub fn get_db_file() -> File {
         let path = PathBuf::from("./test/write.db");
 
         match &path.exists() {
@@ -66,7 +66,7 @@ mod test {
     }
 
     #[test]
-    pub(crate) fn test_writer() {
+    pub fn test_writer() {
         let file = Rc::new(RefCell::new(get_db_file()));
 
         let mut writer = CraneWriter::new(0, 16, Rc::downgrade(&file));

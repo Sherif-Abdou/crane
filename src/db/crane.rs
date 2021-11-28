@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, vec};
+use std::{cell::RefCell, process::Command, rc::Rc, vec};
 
 use crate::cfs::{CraneDisk, CranePartition, CraneSchema};
 
@@ -6,20 +6,20 @@ use super::{DataError, data_command::DataCommand, data_manager::{DataManager, OF
 
 type Partition = Rc<RefCell<CranePartition>>;
 
-pub(crate) struct Crane {
+pub struct Crane {
     disk: CraneDisk,
     managers: Vec<DataManager>
 }
 
 impl Crane {
-    pub(crate) fn from_disk(disk: CraneDisk) -> Self {
+    pub fn from_disk(disk: CraneDisk) -> Self {
         let mut res = Self::new(disk);
         Self::generate_schemas(&mut res);
 
         res
     }
 
-    pub(crate) fn add_schema(&mut self, schema: CraneSchema) -> u64 {
+    pub fn add_schema(&mut self, schema: CraneSchema) -> u64 {
         let slot = self.schema_count();
         self.managers.push(
             DataManager::create_to_disk(&mut self.disk, slot, schema)
@@ -30,18 +30,18 @@ impl Crane {
         slot
     }
 
-    pub(crate) fn save(&mut self) {
+    pub fn save(&mut self) {
         for manager in &mut self.managers {
             manager.save();
         }
         self.disk.save();
     }
 
-    pub(crate) fn schema_count(&self) -> u64 {
+    pub fn schema_count(&self) -> u64 {
         Self::count_schemas(&self.disk.partitions)
     }
 
-    pub(crate) fn new(disk: CraneDisk) -> Self {
+    pub fn new(disk: CraneDisk) -> Self {
         Self {
             disk,
             managers: vec![],
@@ -54,7 +54,7 @@ impl Crane {
         (max_type-OFFSET)/3
     }
 
-    pub(crate) fn execute(&mut self, schema_slot: u64, command: &mut dyn DataCommand) -> Result<(), DataError> {
+    pub fn execute(&mut self, schema_slot: u64, command: &mut dyn DataCommand) -> Result<(), DataError> {
         let res = self.managers[schema_slot as usize].execute(command);
         match res {
             Ok(()) => {
@@ -100,18 +100,18 @@ mod test {
         let write = File::create("test/crane/db.cdb").unwrap();
         let read = File::open("test/crane/db.cdb").unwrap();
 
-        
+        let crane = CraneDisk::init_file(read, write);
 
-        CraneDisk::init_file(read, write)
+        crane
     }
 
     fn load_disk() -> CraneDisk {
         let read = File::open("test/crane/db.cdb").unwrap();
         let write = OpenOptions::new().write(true).open("test/crane/db.cdb").unwrap();
 
-        
+        let crane = CraneDisk::from_file(read, write);
 
-        CraneDisk::from_file(read, write)
+        crane
     }
 
     fn gen_schema() -> CraneSchema {

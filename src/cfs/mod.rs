@@ -9,14 +9,14 @@ mod crane_disk;
 mod schema;
 
 #[derive(Debug)]
-pub(crate) struct FSError {
+pub struct FSError {
 
 }
 
-pub(crate) use writer::Writer;
-pub(crate) use crane_writer::*;
-pub(crate) use reader::Reader;
-pub(crate) use crane_disk::CraneDisk;
-pub(crate) use crane_partition::CranePartition;
-pub(crate) use schema::*;
-pub(crate) use buffer::Buffer;
+pub use writer::Writer;
+pub use crane_writer::*;
+pub use reader::Reader;
+pub use crane_disk::CraneDisk;
+pub use crane_partition::CranePartition;
+pub use schema::*;
+pub use buffer::Buffer;

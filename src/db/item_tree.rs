@@ -4,20 +4,20 @@ use crate::cfs::{Buffer, CranePartition, Reader, Writer};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 
 /// A position of an item on disk
-pub(crate) struct Position {
+pub struct Position {
     /// The partition id of the item.
-    pub(crate) partition: u64,
+    pub partition: u64,
     /// How many bytes from the beginning the item is.
-    pub(crate) offset: u64,
+    pub offset: u64,
 }
 
 impl Position {
-    pub(crate) fn new(partition: u64, offset: u64) -> Self {
+    pub fn new(partition: u64, offset: u64) -> Self {
         Self { partition, offset }
     }  
 
     /// Turns the position into bytes.
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         buf.append(&mut self.partition.to_be_bytes().to_vec());
         buf.append(&mut self.offset.to_be_bytes().to_vec());
@@ -28,7 +28,7 @@ impl Position {
     /// Creates a position from bytes.
     /// # Arguments
     /// * `bytes` - The bytes to create the position from.
-    pub(crate) fn from_bytes(bytes: &mut Buffer) -> Self {
+    pub fn from_bytes(bytes: &mut Buffer) -> Self {
         let partition = u64::from_be_bytes(bytes.consume(8)[..].try_into().unwrap());
         let offset = u64::from_be_bytes(bytes.consume(8)[..].try_into().unwrap());
 
@@ -37,24 +37,24 @@ impl Position {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ItemTree {
-    pub(crate) tree: BTreeMap<u64, Position>,
+pub struct ItemTree {
+    pub tree: BTreeMap<u64, Position>,
     max_key: u64,
 }
 
 impl ItemTree {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         ItemTree {
             tree: BTreeMap::new(),
             max_key: 0,
         }
     }
 
-    pub(crate) fn max_key(&self) -> u64 {
+    pub fn max_key(&self) -> u64 {
         self.max_key
     }
 
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         self.tree.iter().map(|(key, value)| {
             let mut key_bytes = key.to_be_bytes().to_vec();
             let mut value_bytes = value.to_bytes().to_vec();
@@ -64,7 +64,7 @@ impl ItemTree {
         }).flatten().collect()
     }
 
-    pub(crate) fn from_bytes(bytes: &mut Buffer) -> Self {
+    pub fn from_bytes(bytes: &mut Buffer) -> Self {
         let mut tree = BTreeMap::new();
         let mut m = 0u64;
         while !bytes.empty() {
@@ -84,30 +84,30 @@ impl ItemTree {
         }
     }
 
-    pub(crate) fn position_set(&self) -> HashSet<Position> {
+    pub fn position_set(&self) -> HashSet<Position> {
         self.tree.values().cloned().collect()
     }
 
-    pub(crate) fn to_partition(&self, partition: &mut CranePartition) {
+    pub fn to_partition(&self, partition: &mut CranePartition) {
         partition.write_sectors(0, 0, self.to_bytes()[..].try_into().unwrap()).unwrap();
     }
 
-    pub(crate) fn from_partition(partition: &mut CranePartition, offset: Option<u64>) -> Self {
+    pub fn from_partition(partition: &mut CranePartition, offset: Option<u64>) -> Self {
         let o = offset.unwrap_or(0);
         let mut buffer = Buffer::new(partition.read_sectors(o, partition.total_len()+o).unwrap());
 
         Self::from_bytes(&mut buffer)
     }
 
-    pub(crate) fn get(&self, key: u64) -> Option<Position> {
+    pub fn get(&self, key: u64) -> Option<Position> {
         self.tree.get(&key).cloned()
     }
 
-    pub(crate) fn remove(&mut self, key: u64) {
+    pub fn remove(&mut self, key: u64) {
         self.tree.remove(&key);
     }
 
-    pub(crate) fn insert(&mut self, key: u64, partition: u64, offset: u64) {
+    pub fn insert(&mut self, key: u64, partition: u64, offset: u64) {
         self.max_key = u64::max(self.max_key, key);
         self.tree.insert(key, Position::new(partition, offset));
     }

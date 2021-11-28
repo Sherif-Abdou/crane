@@ -1,4 +1,4 @@
-use std::{vec};
+use std::{convert::TryInto, vec};
 use lazy_static::lazy_static;
 
 use crate::{cfs::{buffer::Buffer, reader::Reader, schema::DataValue}};
@@ -15,24 +15,24 @@ lazy_static! {
 }
 
 
-pub(crate) struct RootPartition {
+pub struct RootPartition {
     /// The underlying partition for the disk metadata
     partition: CranePartition,
     /// The sector starts of each of the partitions
-    pub(crate) partition_starts: Vec<u64>,
+    pub partition_starts: Vec<u64>,
     /// Sector ends of each of the partitions
-    pub(crate) partition_ends: Vec<u64>,
+    pub partition_ends: Vec<u64>,
     /// The number of bytes initialized in each partition
-    pub(crate) init_lens: Vec<u64>,
+    pub init_lens: Vec<u64>,
     /// The type of each partition
-    pub(crate) partition_types: Vec<u64>,
+    pub partition_types: Vec<u64>,
 }
 
 impl RootPartition {
     /// Loads root partition data from the given partition
     /// # Arguments
     /// * `partition` - The partition to load the root partition from
-    pub(crate) fn import_from(partition: CranePartition) -> Self {
+    pub fn import_from(partition: CranePartition) -> Self {
         let mut root = RootPartition {
             partition,
             partition_starts: vec![],
@@ -49,7 +49,7 @@ impl RootPartition {
     /// Initializes a root partition in the given partition
     /// # Arguments
     /// * `partition` - The partition to initialize the root partition in
-    pub(crate) fn new(partition: CranePartition) -> Self {
+    pub fn new(partition: CranePartition) -> Self {
         RootPartition {
             partition,
             partition_starts: vec![],
@@ -60,12 +60,12 @@ impl RootPartition {
     }
 
     /// Helper method to caclulate the sector lengths of each partition respectively
-    pub(crate) fn compute_lens(&self) -> Vec<u64> {
+    pub fn compute_lens(&self) -> Vec<u64> {
         self.partition_starts.iter().zip(self.partition_ends.iter()).map(|(s, e)| *e-*s).collect()
     }
 
     /// Reads the partition to get root data
-    pub(crate) fn read(&mut self) {
+    pub fn read(&mut self) {
         let mut new_starts: Vec<u64> = vec![];
         let mut new_ends: Vec<u64> = vec![];
         let mut init_lens: Vec<u64> = vec![];
@@ -95,7 +95,7 @@ impl RootPartition {
     }
 
     /// Write root data to the partition
-    pub(crate) fn write(&mut self) {
+    pub fn write(&mut self) {
         assert_eq!(self.partition_starts.len(), self.partition_ends.len());
         assert_eq!(self.partition_starts.len(), self.init_lens.len());
         assert_eq!(self.partition_starts.len(), self.partition_types.len());

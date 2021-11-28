@@ -2,12 +2,12 @@ use std::{cell::RefCell, fs::File, io::{Seek, SeekFrom, Write}, rc::Rc};
 
 use crate::SECTOR_LENGTH;
 
-use super::{crane_partition::CranePartition, root_partition::{RootPartition}};
+use super::{crane_partition::CranePartition, root_partition::{self, RootPartition}};
 
 
-pub(crate) struct CraneDisk {
-    pub(crate) root_partition: RootPartition,
-    pub(crate) partitions: Vec<Rc<RefCell<CranePartition>>>,
+pub struct CraneDisk {
+    pub root_partition: RootPartition,
+    pub partitions: Vec<Rc<RefCell<CranePartition>>>,
     read_file: Rc<RefCell<File>>,
     write_file: Rc<RefCell<File>>,
 }
@@ -17,7 +17,7 @@ impl CraneDisk {
     /// # Arguments
     /// * `read_file` - The file to read from.
     /// * `write_file` - The file to write to.
-    pub(crate) fn from_file(read_file: File, write_file: File) -> Self {
+    pub fn from_file(read_file: File, write_file: File) -> Self {
         let read_rc = Rc::new(RefCell::new(read_file));
         let write_rc = Rc::new(RefCell::new(write_file));
 
@@ -49,7 +49,7 @@ impl CraneDisk {
     /// # Arguments
     /// * 'read_file' - The file to read from.
     /// * `write_file` - The file to write to.
-    pub(crate) fn init_file(read_file: File, write_file: File) -> Self {
+    pub fn init_file(read_file: File, write_file: File) -> Self {
         let read_rc = Rc::new(RefCell::new(read_file));
         let write_rc = Rc::new(RefCell::new(write_file));
 
@@ -71,7 +71,7 @@ impl CraneDisk {
     /// Adds sectors of empty bytes, returns the new sector length of the file
     /// # Arguments
     /// * `sectors` - The number of sectors to add.
-    pub(crate) fn add_sectors(&mut self, sectors: u64) -> u64 {
+    pub fn add_sectors(&mut self, sectors: u64) -> u64 {
         let mut f = self.write_file.borrow_mut();
         f.seek(SeekFrom::End(0)).unwrap();
 
@@ -83,11 +83,11 @@ impl CraneDisk {
     }
 
     /// Saves the root partition to the disk.
-    pub(crate) fn save(&mut self) {
+    pub fn save(&mut self) {
         self.update_root();
     }
 
-    pub(crate) fn append_partition(&mut self, sector_length: u64, partition_type: u64) -> u64 {
+    pub fn append_partition(&mut self, sector_length: u64, partition_type: u64) -> u64 {
         let old_len = self.len();
         let new_len = self.add_sectors(sector_length);
         let id = (self.partitions.len() as u64) + 1;
@@ -103,14 +103,14 @@ impl CraneDisk {
     /// Gets a partition by its partition id.
     /// # Arguments
     /// * `id` - The id of the partition to get.
-    pub(crate) fn get_partition_with_id(&self, id: u64) -> &Rc<RefCell<CranePartition>> {
+    pub fn get_partition_with_id(&self, id: u64) -> &Rc<RefCell<CranePartition>> {
         &self.partitions[id as usize - 1]
     }
 
     /// Gets all partitions of a given type.
     /// # Arguments
     /// * `t` - The type of the partitions to get.
-    pub(crate) fn get_partition_by_type(&self, t: u64) -> Vec<&Rc<RefCell<CranePartition>>> {
+    pub fn get_partition_by_type(&self, t: u64) -> Vec<&Rc<RefCell<CranePartition>>> {
         self.partitions.iter()
             .filter(|x| x.borrow().partition_type == t)
             .collect()
@@ -132,7 +132,7 @@ impl CraneDisk {
     }
 
     /// Gets the sector length of the disk.
-    pub(crate) fn len(&self) -> u64 {
+    pub fn len(&self) -> u64 {
         (self.read_file.borrow().metadata().unwrap().len() as u64)/(SECTOR_LENGTH as u64)
     }
 }

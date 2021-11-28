@@ -1,4 +1,4 @@
 mod cfs;
 mod db;
 
-pub(crate) const SECTOR_LENGTH: usize = 256;
+pub const SECTOR_LENGTH: usize = 256;
