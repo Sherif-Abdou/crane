@@ -71,10 +71,8 @@ impl InsertValueCommand {
 
     fn get_position_for_new(&self, state: &mut DataState) -> Result<(usize, u64), DataError> {
         if let Some(res) = self.find_replace_slot(state) {
-            dbg!("used replace slot");
             return Ok(res);
         }
-        dbg!("used fresh slot");
         let i = self.find_fresh_slot(state)?;
         let off = state.data_partitions[i].borrow().initialized_len;
         Ok((i, off))
@@ -88,7 +86,6 @@ impl InsertValueCommand {
             if i >= state.data_partitions.len() {
                 return Err(DataError::OutOfStorage);
             }
-        dbg!(state.data_partitions[i as usize].borrow().total_len() - state.data_partitions[i as usize].borrow().initialized_len);
         }
         Ok(i)
     }

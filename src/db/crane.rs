@@ -115,11 +115,17 @@ mod test {
     }
 
     fn gen_schema() -> CraneSchema {
-        let schema = CraneSchema::new(vec![
+        let mut schema = CraneSchema::new(vec![
             DataValue::UInt64(0),
             DataValue::Int16(0),
             DataValue::Fixchar("".to_owned(), 64),
         ]);
+
+        schema.names = vec![
+            "Id".to_owned(),
+            "Luck".to_owned(),
+            "Name".to_owned(),
+        ];
 
         schema
     }

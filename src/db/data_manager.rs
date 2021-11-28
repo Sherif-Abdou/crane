@@ -19,6 +19,7 @@ pub struct DataManager {
     tree_partition: Partition,
     schema_partition: Partition,
     tree: Rc<RefCell<ItemTree>>,
+    pub name: String,
 }
 
 impl DataManager {
@@ -30,6 +31,7 @@ impl DataManager {
             tree_partition,
             tree,
             schema_partition,
+            name: "".to_owned(),
         }
     }
 
@@ -38,7 +40,7 @@ impl DataManager {
         let tree_type = schema_slot*3 + 2;
         let data_type = schema_slot*3 + 3;
 
-        let schema_id = disk.append_partition(2, schema_type);
+        let schema_id = disk.append_partition(32, schema_type);
         let tree_id = disk.append_partition(8, tree_type);
         let data_id = disk.append_partition(16, data_type);
 
@@ -65,6 +67,7 @@ impl DataManager {
             schema_partition: (*schema_partition).clone(),
             tree_partition: (*tree_partition).clone(),
             tree,
+            name: "".to_owned(),
         }
     }
 
@@ -82,7 +85,7 @@ impl DataManager {
         let data_partitions: Vec<Partition> = dpartitions.iter()
             .map(|v| (*v).clone())
             .collect();
-        let schema = Self::load_schema(*schema_partition);
+        let (schema_name, schema) = Self::load_schema(*schema_partition);
         let tree = Rc::new(RefCell::new(ItemTree::from_partition(&mut *tree_partition.borrow_mut(), None)));
 
 
@@ -92,13 +95,19 @@ impl DataManager {
             schema_partition: (*schema_partition).clone(),
             tree_partition: (*tree_partition).clone(),
             tree,
+            name: schema_name,
         }
     }
 
     pub fn save_schema(&mut self) {
+        assert_eq!(self.schema.names.len(), self.schema.types.len());
+
+        let mut name_bytes = DataValue::Fixchar(self.name.clone(), 100).to_bytes();
+
         let ids = self.schema.types.iter().map(|t| t.id()).collect::<Vec<u16>>();
         let mut vals = ids.iter().enumerate().map(|(i, id)| {
-            let mut v = id.to_be_bytes().to_vec();
+            let mut v = DataValue::Fixchar(self.schema.names[i].clone(), 100).to_bytes();
+            v.append(&mut id.to_be_bytes().to_vec());
 
             if let DataValue::Fixchar(_, j) = self.schema.types[i] {
                 v.append(&mut j.to_be_bytes().to_vec());
@@ -107,17 +116,30 @@ impl DataManager {
             v
         }).flatten().collect::<Vec<u8>>();
 
-        self.schema_partition.borrow_mut().write_sectors(0, 0, &vals[..]).expect("Error writing schema to disk");
+        name_bytes.append(&mut vals);
+        
+        self.schema_partition.borrow_mut().write_sectors(0, 0, &name_bytes[..]).expect("Error writing schema to disk");
     }
 
-    fn load_schema(schema_partition: &RefCell<CranePartition>) -> CraneSchema {
+    fn load_schema(schema_partition: &RefCell<CranePartition>) -> (String, CraneSchema) {
         let len = schema_partition.borrow().total_len();
         let bytes = schema_partition.borrow_mut().read_sectors(0, len).unwrap();
         let mut buffer = Buffer::new(bytes);
 
+        let mut name_dv = DataValue::Fixchar(String::new(), 100);
+
+        DataValue::from_bytes(buffer.consume(name_dv.len().unwrap()), &mut name_dv);
+        let schema_name = if let DataValue::Fixchar(value, _) = &name_dv {
+            value.clone()
+        } else {
+            panic!()
+        };
+
+        DataValue::from_bytes(buffer.consume(name_dv.len().unwrap()), &mut name_dv);
         let mut curr = buffer.consume(2);
         let mut value = u16::from_be_bytes(curr.try_into().unwrap());
         let mut ids = Vec::new();
+        let mut names = Vec::new();
         while value != 0 && !buffer.empty() {
             let mut meta_data: u64 = 0;
             if value == 6 {
@@ -126,12 +148,19 @@ impl DataManager {
                 meta_data = v;
             }
             ids.push(DataValue::from_id(value, meta_data));
+            if let DataValue::Fixchar(value, _) = &name_dv {
+                names.push(value.clone());
+            } else {
+                panic!()
+            }
+            DataValue::from_bytes(buffer.consume(name_dv.len().unwrap()), &mut name_dv);
             curr = buffer.consume(2);
             value = u16::from_be_bytes(curr.try_into().unwrap());
         }
 
-        let schema = CraneSchema::new(ids);
-        schema
+        let mut schema = CraneSchema::new(ids);
+        schema.names = names;
+        (schema_name, schema)
     }
 
     fn save_tree(&self) {
@@ -170,7 +199,7 @@ impl DataManager {
 
 #[cfg(test)]
 mod test {
-    use std::{borrow::Borrow, fs::{File, OpenOptions}};
+    use std::{ascii::AsciiExt, borrow::Borrow, fs::{File, OpenOptions}};
 
     use crate::db::data_command::{GetKeyCommand, InsertValueCommand};
 
@@ -195,12 +224,16 @@ mod test {
     }
 
     fn get_schema() -> CraneSchema {
-       CraneSchema::new(vec![
+       let mut v = CraneSchema::new(vec![
             DataValue::UInt64(0),
             DataValue::UInt64(0),
             DataValue::UInt64(0),
             DataValue::Fixchar(String::new(), 32)
-        ])
+        ]);
+
+        v.names = vec!["birthday".to_owned(), "id".to_owned(), "type".to_owned(), "name".to_ascii_lowercase()];
+
+        v
     }
 
     #[test]
@@ -210,6 +243,7 @@ mod test {
         
         let schema = get_schema();
         let mut manager = DataManager::create_to_disk(&mut disk, 1, schema);
+        manager.name = "Employee".to_owned();
 
         let values = vec![
             DataValue::UInt64(1),
@@ -249,6 +283,7 @@ mod test {
         assert_ne!(value, None);
 
         let stuff = value.unwrap();
+        assert_eq!(&manager.name, "Employee");
         assert_eq!(*stuff.get(0).unwrap(), DataValue::UInt64(1));
         assert_eq!(*stuff.get(1).unwrap(), DataValue::UInt64(5));
         assert_eq!(*stuff.get(2).unwrap(), DataValue::UInt64(2));

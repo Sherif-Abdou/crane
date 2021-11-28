@@ -86,7 +86,6 @@ impl DataValue {
             Self::Varchar(_) => unimplemented!(),
             Self::Fixchar(_, _) => {
                 let (s, e) = (bytes.len()-8, bytes.len());
-                dbg!(s, e);
                 let len_bytes = &bytes[s..e];
                 let len = u64::from_be_bytes(len_bytes.try_into().expect(parse_err)) as usize;
                 let str_bytes = &bytes[0..len];
@@ -103,13 +102,15 @@ impl DataValue {
 
 #[derive(Clone)]
 pub struct CraneSchema {
-    pub types: Vec<DataValue>
+    pub types: Vec<DataValue>,
+    pub names: Vec<String>,
 }
 
 impl CraneSchema {
     pub fn new(types: Vec<DataValue>) -> Self {
         CraneSchema {
-            types
+            types,
+            names: vec![],
         }
     }
 
