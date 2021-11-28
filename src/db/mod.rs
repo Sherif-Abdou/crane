@@ -4,6 +4,6 @@ mod data_command;
 mod crane;
 
 #[derive(Debug, PartialEq)]
-pub enum DataError {
+pub(crate) enum DataError {
     OutOfStorage,
 }

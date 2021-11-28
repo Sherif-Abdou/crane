@@ -1,10 +1,10 @@
 use std::{convert::TryInto, fmt::Debug};
 
-use super::buffer::{self, Buffer};
+use super::buffer::{Buffer};
 
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum DataValue {
+pub(crate) enum DataValue {
     Bool(bool),
     Int8(i8),
     Int16(i16),
@@ -16,7 +16,7 @@ pub enum DataValue {
 }
 
 impl DataValue {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
         match &self {
             Self::Int16(i) => ((*i).to_be_bytes().to_vec()),
             Self::Int32(i) => ((*i).to_be_bytes().to_vec()),
@@ -35,8 +35,8 @@ impl DataValue {
         }
     }
 
-    pub fn len(&self) -> Option<u64> {
-        return match &self {
+    pub(crate) fn len(&self) -> Option<u64> {
+        match &self {
             Self::Int8(_) => Some(1),
             Self::Int16(_) => Some(2),
             Self::Int32(_) => Some(4),
@@ -48,7 +48,7 @@ impl DataValue {
         }
     }
 
-    pub fn id(&self) -> u16 {
+    pub(crate) fn id(&self) -> u16 {
         match &self {
             Self::Int8(_) => 1,
             Self::Int16(_) => 2,
@@ -61,7 +61,7 @@ impl DataValue {
         }
     }
 
-    pub fn from_id(id: u16, metadata: u64) -> Self {
+    pub(crate) fn from_id(id: u16, metadata: u64) -> Self {
         match id {
             1 => Self::Int8(0),
             2 => Self::Int16(0),
@@ -74,7 +74,7 @@ impl DataValue {
         }
     }
 
-    pub fn from_bytes(bytes: Vec<u8>, d_type: &mut DataValue) {
+    pub(crate) fn from_bytes(bytes: Vec<u8>, d_type: &mut DataValue) {
         let parse_err = "Couldn't parse value from bytes";
         let new_val = match d_type {
             Self::Int8(_) => Self::Int8(i8::from_be_bytes(bytes[..].try_into().expect(parse_err))),
@@ -101,20 +101,20 @@ impl DataValue {
 }
 
 #[derive(Clone)]
-pub struct CraneSchema {
-    pub types: Vec<DataValue>,
-    pub names: Vec<String>,
+pub(crate) struct CraneSchema {
+    pub(crate) types: Vec<DataValue>,
+    pub(crate) names: Vec<String>,
 }
 
 impl CraneSchema {
-    pub fn new(types: Vec<DataValue>) -> Self {
+    pub(crate) fn new(types: Vec<DataValue>) -> Self {
         CraneSchema {
             types,
             names: vec![],
         }
     }
 
-    pub fn parse_bytes(&self, bytes: &mut Buffer) -> Vec<DataValue> {
+    pub(crate) fn parse_bytes(&self, bytes: &mut Buffer) -> Vec<DataValue> {
         let mut values = self.types.clone();
 
 
@@ -125,11 +125,11 @@ impl CraneSchema {
         values
     }
 
-    pub fn len(&self) -> u64 {
+    pub(crate) fn len(&self) -> u64 {
         self.types.iter().map(|v| v.len().unwrap()).sum()
     }
 
-    pub fn produce_bytes(&self, values: &Vec<DataValue>) -> Vec<u8> {
+    pub(crate) fn produce_bytes(&self, values: &Vec<DataValue>) -> Vec<u8> {
         values.iter()
             .map(|v| v.to_bytes().iter().copied().collect::<Vec<u8>>())
             .flatten()

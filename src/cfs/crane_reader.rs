@@ -1,10 +1,10 @@
-use std::{cell::RefCell, fs::File, io::{Read, Seek, SeekFrom}, rc::Weak, slice};
+use std::{cell::RefCell, fs::File, io::{Read, Seek, SeekFrom}, rc::Weak};
 
 use crate::SECTOR_LENGTH;
 
 use super::{FSError, reader::{Reader}};
 
-pub struct CraneReader {
+pub(crate) struct CraneReader {
     sector_length: u64,
     start_byte: u64,
     end_byte: u64,
@@ -12,7 +12,7 @@ pub struct CraneReader {
 }
 
 impl CraneReader {
-    pub fn new(start: u64, end: u64, file: Weak<RefCell<File>>) -> Self {
+    pub(crate) fn new(start: u64, end: u64, file: Weak<RefCell<File>>) -> Self {
         CraneReader {
             sector_length: SECTOR_LENGTH as u64,
             start_byte: start,
@@ -60,7 +60,7 @@ mod test {
 
     use super::*;
 
-    pub fn get_db_file() -> File {
+    pub(crate) fn get_db_file() -> File {
         let path = PathBuf::from("./test/read.db");
 
         match &path.exists() {
@@ -70,7 +70,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_writer() {
+    pub(crate) fn test_writer() {
         let file = Rc::new(RefCell::new(get_db_file()));
 
         let mut reader = CraneReader::new(0, 16, Rc::downgrade(&file));

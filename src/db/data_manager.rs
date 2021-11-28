@@ -10,20 +10,20 @@ use super::data_command::{DataCommand, DataState};
 use super::item_tree::ItemTree;
 
 
-pub const OFFSET: u64 = 0;
+pub(crate) const OFFSET: u64 = 0;
 
 type Partition = Rc<RefCell<CranePartition>>;
-pub struct DataManager {
+pub(crate) struct DataManager {
     schema: CraneSchema,
     data_partitions: Vec<Partition>,
     tree_partition: Partition,
     schema_partition: Partition,
     tree: Rc<RefCell<ItemTree>>,
-    pub name: String,
+    pub(crate) name: String,
 }
 
 impl DataManager {
-    pub fn new(schema: CraneSchema, data_partitions: Vec<Partition>, schema_partition: Partition, tree_partition: Partition) -> Self {
+    pub(crate) fn new(schema: CraneSchema, data_partitions: Vec<Partition>, schema_partition: Partition, tree_partition: Partition) -> Self {
         let tree = Rc::new(RefCell::new(ItemTree::from_partition(&mut *tree_partition.borrow_mut(), None)));
         Self {
             schema,
@@ -35,14 +35,14 @@ impl DataManager {
         }
     }
 
-    pub fn create_to_disk(disk: &mut CraneDisk, schema_slot: u64, schema: CraneSchema) -> Self {
+    pub(crate) fn create_to_disk(disk: &mut CraneDisk, schema_slot: u64, schema: CraneSchema) -> Self {
         let schema_type = schema_slot*3 + 1;
         let tree_type = schema_slot*3 + 2;
         let data_type = schema_slot*3 + 3;
 
-        let schema_id = disk.append_partition(32, schema_type);
-        let tree_id = disk.append_partition(8, tree_type);
-        let data_id = disk.append_partition(16, data_type);
+        let _schema_id = disk.append_partition(32, schema_type);
+        let _tree_id = disk.append_partition(8, tree_type);
+        let _data_id = disk.append_partition(16, data_type);
 
 
         // Code here is almost entirely copy and pasted from `from_disk`
@@ -71,7 +71,7 @@ impl DataManager {
         }
     }
 
-    pub fn from_disk(disk: &CraneDisk, schema_slot: u64) -> Self {
+    pub(crate) fn from_disk(disk: &CraneDisk, schema_slot: u64) -> Self {
         let schema_type = schema_slot*3 + 1;
         let tree_type = schema_slot*3 + 2;
         let data_type = schema_slot*3 + 3;
@@ -99,7 +99,7 @@ impl DataManager {
         }
     }
 
-    pub fn save_schema(&mut self) {
+    pub(crate) fn save_schema(&mut self) {
         assert_eq!(self.schema.names.len(), self.schema.types.len());
 
         let mut name_bytes = DataValue::Fixchar(self.name.clone(), 100).to_bytes();
@@ -169,28 +169,28 @@ impl DataManager {
     }
 
 
-    pub fn save(&mut self) {
+    pub(crate) fn save(&mut self) {
         self.save_schema();
         self.save_tree();
     }
 
-    pub fn get_schema(&self) -> &CraneSchema {
+    pub(crate) fn get_schema(&self) -> &CraneSchema {
         &self.schema
     }
 
-    pub fn get_data_partitions(&self) -> &Vec<Partition> {
+    pub(crate) fn get_data_partitions(&self) -> &Vec<Partition> {
         &self.data_partitions
     }
 
-    pub fn get_tree_partition(&self) -> &Partition {
+    pub(crate) fn get_tree_partition(&self) -> &Partition {
         &self.tree_partition
     }
 
-    pub fn execute(&mut self, command: &mut dyn DataCommand) -> Result<(), DataError> {
+    pub(crate) fn execute(&mut self, command: &mut dyn DataCommand) -> Result<(), DataError> {
         let mut state = DataState {
             schema: &self.schema,
             tree: &self.tree,
-            data_partitions: self.data_partitions.iter().map(|p| p).collect(),
+            data_partitions: self.data_partitions.iter().collect(),
         };
 
         command.execute(&mut state)
@@ -199,7 +199,7 @@ impl DataManager {
 
 #[cfg(test)]
 mod test {
-    use std::{ascii::AsciiExt, borrow::Borrow, fs::{File, OpenOptions}};
+    use std::{ascii::AsciiExt, fs::{File, OpenOptions}};
 
     use crate::db::data_command::{GetKeyCommand, InsertValueCommand};
 
@@ -209,18 +209,18 @@ mod test {
         let write = File::create("test/data/db.cdb").unwrap();
         let read = File::open("test/data/db.cdb").unwrap();
 
-        let crane = CraneDisk::init_file(read, write);
+        
 
-        crane
+        CraneDisk::init_file(read, write)
     }
 
     fn load_disk() -> CraneDisk {
         let read = File::open("test/data/db.cdb").unwrap();
         let write = OpenOptions::new().write(true).open("test/data/db.cdb").unwrap();
 
-        let crane = CraneDisk::from_file(read, write);
+        
 
-        crane
+        CraneDisk::from_file(read, write)
     }
 
     fn get_schema() -> CraneSchema {
@@ -237,7 +237,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_create_manager() {
+    pub(crate) fn test_create_manager() {
 
         let mut disk = generate_disk();
         
@@ -268,7 +268,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_load_manager() {
+    pub(crate) fn test_load_manager() {
         test_create_manager();
 
         let disk = load_disk();

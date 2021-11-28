@@ -2,7 +2,7 @@ use super::FSError;
 
 
 /// A reader is a trait that can read sectors inside of itself
-pub trait Reader {
+pub(crate) trait Reader {
     /// The number of bytes a sector takes up
     fn sector_length(&self) -> u64;
     /// Reads bytes from sector start to end

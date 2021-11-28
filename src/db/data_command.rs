@@ -6,30 +6,30 @@ use super::{DataError, item_tree::{ItemTree, Position}};
 
 type Partition = Rc<RefCell<CranePartition>>;
 
-pub struct DataState<'a> {
-    pub data_partitions: Vec<&'a Partition>,
-    pub schema: &'a CraneSchema,
-    pub tree: &'a Rc<RefCell<ItemTree>>
+pub(crate) struct DataState<'a> {
+    pub(crate) data_partitions: Vec<&'a Partition>,
+    pub(crate) schema: &'a CraneSchema,
+    pub(crate) tree: &'a Rc<RefCell<ItemTree>>
 }
 
-pub trait DataCommand {
+pub(crate) trait DataCommand {
     fn execute(&mut self, state: &mut DataState) -> Result<(), DataError>;
 }
 
-pub struct GetKeyCommand {
+pub(crate) struct GetKeyCommand {
     key: u64,
     res: Option<Vec<DataValue>>,
 }
 
 impl GetKeyCommand {
-    pub fn new(key: u64) -> Self {
+    pub(crate) fn new(key: u64) -> Self {
         Self {
             key,
             res: None
         }
     }
 
-    pub fn get_result(&self) -> Option<Vec<DataValue>> {
+    pub(crate) fn get_result(&self) -> Option<Vec<DataValue>> {
         self.res.clone()
     }
 }
@@ -39,7 +39,7 @@ impl DataCommand for GetKeyCommand {
         let rdiff: f64 = (state.schema.len() as f64)/(SECTOR_LENGTH as f64);
         let diff = f64::ceil(rdiff) as u64;
         if let Some(position) = state.tree.borrow().get(self.key) {
-            let value = state.data_partitions.iter().filter(|p| p.borrow().id() == position.partition).next().unwrap();
+            let value = state.data_partitions.iter().find(|p| p.borrow().id() == position.partition).unwrap();
             
             let s = SECTOR_LENGTH as u64;
 
@@ -58,12 +58,12 @@ impl DataCommand for GetKeyCommand {
     }
 }
 
-pub struct InsertValueCommand {
+pub(crate) struct InsertValueCommand {
     value: Vec<DataValue>,
 }
 
 impl InsertValueCommand {
-    pub fn new(value: Vec<DataValue>) -> Self {
+    pub(crate) fn new(value: Vec<DataValue>) -> Self {
         Self {
             value
         }
@@ -119,6 +119,6 @@ impl DataCommand for InsertValueCommand {
         state.tree.borrow_mut().insert(m+1,         state.data_partitions[i].borrow().id(), off);
         state.data_partitions[i].borrow_mut().write_sectors(0, off, &state.schema.produce_bytes(&self.value))
             .unwrap();
-        return Ok(());
+        Ok(())
     }
 }

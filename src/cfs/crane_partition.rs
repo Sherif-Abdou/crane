@@ -4,12 +4,12 @@ use crate::SECTOR_LENGTH;
 
 use super::{FSError, crane_reader::CraneReader, crane_writer::CraneWriter, reader::Reader, writer::Writer};
 
-pub struct CranePartition {
+pub(crate) struct CranePartition {
     id: u64,
     offset: u64,
     total_len: u64,
-    pub partition_type: u64,
-    pub initialized_len: u64,
+    pub(crate) partition_type: u64,
+    pub(crate) initialized_len: u64,
     writer: Box<dyn Writer>,
     reader: Box<dyn Reader>
 }
@@ -25,12 +25,12 @@ impl CranePartition {
     /// * `partition_type` - The type of the partition.
     /// * `rfile` - The file to read from.
     /// * `wfile` - The file to write to.
-    pub fn with_type(id: u64, offset: u64, total_len: u64, initialized_len: u64, partition_type: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) 
+    pub(crate) fn with_type(id: u64, offset: u64, total_len: u64, initialized_len: u64, partition_type: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) 
         -> Self {
         let s = offset;
         let e = total_len + offset;
-        let reader = CraneReader::new(s, e, rfile.clone());
-        let writer = CraneWriter::new(s, e, wfile.clone());
+        let reader = CraneReader::new(s, e, rfile);
+        let writer = CraneWriter::new(s, e, wfile);
         CranePartition {
             id,
             offset,
@@ -51,11 +51,11 @@ impl CranePartition {
     /// * `initialized_len` - How many sectors in the partition that have been initialized.
     /// * `rfile` - The file to read from.
     /// * `wfile` - The file to write to.
-    pub fn new(id: u64, offset: u64, total_len: u64, initialized_len: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) -> Self {
+    pub(crate) fn new(id: u64, offset: u64, total_len: u64, initialized_len: u64, rfile: Weak<RefCell<File>>, wfile: Weak<RefCell<File>>) -> Self {
         let s = offset;
         let e = total_len + offset;
-        let reader = CraneReader::new(s, e, rfile.clone());
-        let writer = CraneWriter::new(s, e, wfile.clone());
+        let reader = CraneReader::new(s, e, rfile);
+        let writer = CraneWriter::new(s, e, wfile);
         CranePartition {
             id,
             offset,
@@ -68,22 +68,22 @@ impl CranePartition {
     }
 
     /// Returns the offset of the partition.
-    pub fn offset(&self) -> u64 {
+    pub(crate) fn offset(&self) -> u64 {
         self.offset
     }
 
     // Returns the total length of the partition in sectors.
-    pub fn total_len(&self) -> u64 {
+    pub(crate) fn total_len(&self) -> u64 {
         self.total_len
     }
 
     /// Returns the total length of the partition in bytes.
-    pub fn total_bytes(&self) -> u64 {
+    pub(crate) fn total_bytes(&self) -> u64 {
         self.total_len * (SECTOR_LENGTH as u64)
     }
 
     /// Returns the id of the partition.
-    pub fn id(&self) -> u64 {
+    pub(crate) fn id(&self) -> u64 {
         self.id
     }
 }
@@ -95,7 +95,7 @@ impl Writer for CranePartition {
 
     fn write_sectors(&mut self, start: u64, offset: u64, bytes: &[u8]) -> Result<(), FSError> {
         let s = start + self.offset;
-        let e = s + offset + (bytes.len() as u64);
+        let _e = s + offset + (bytes.len() as u64);
         self.initialized_len = max(start*(SECTOR_LENGTH as u64) + offset + (bytes.len() as u64), self.initialized_len);
         self.writer.write_sectors(s,offset, bytes)
     }
